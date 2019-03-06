@@ -8,7 +8,7 @@
 
 ### What is Courier279?
 
-A secure and decentralized messaging and sharing application that respects the privacy of its users.
+A secure and trustless messaging and sharing application that respects the privacy of its users.
 - Messages are only ever readable by intended recipients. The server will store messages, but will never be able to access anything. 
 - Files may also be shared with a single other user, or to a group. In either case, the files will be secured in the same way messages are
 - Create and manage contacts

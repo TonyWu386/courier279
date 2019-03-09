@@ -14,7 +14,7 @@ USE `c279` ;
 -- Table `c279`.`Users`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Users` (
-  `UserId` INT NOT NULL,
+  `UserId` INT NOT NULL AUTO_INCREMENT,
   `Username` VARCHAR(45) NOT NULL,
   `RealName` VARCHAR(45) NULL,
   PRIMARY KEY (`UserId`))
@@ -26,9 +26,9 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`UserCredentials` (
   `Users_UserId` INT NOT NULL,
-  `HashedPassword` VARCHAR(45) NOT NULL,
-  `PersistentPubKey` VARCHAR(45) NOT NULL,
-  `EncryptedPersistentPrivKey` VARCHAR(45) NOT NULL,
+  `HashedPassword` VARCHAR(64) NOT NULL,
+  `PersistentPubKey` VARCHAR(64) NOT NULL,
+  `EncryptedPersistentPrivKey` VARCHAR(64) NOT NULL,
   INDEX `fk_UserCredentials_Users_idx` (`Users_UserId` ASC),
   PRIMARY KEY (`Users_UserId`),
   CONSTRAINT `fk_UserCredentials_Users`
@@ -43,11 +43,11 @@ ENGINE = InnoDB;
 -- Table `c279`.`Contacts`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Contacts` (
-  `ContactsId` INT NOT NULL,
+  `ContactsId` INT NOT NULL AUTO_INCREMENT,
   `Owning_UserId` INT NOT NULL,
   `Target_UserId` INT NOT NULL,
   `DateAdded` DATETIME NOT NULL,
-  `ContactType` VARCHAR(45) NOT NULL,
+  `ContactType` VARCHAR(10) NOT NULL,
   PRIMARY KEY (`ContactsId`),
   INDEX `fk_Contacts_Users2_idx` (`Owning_UserId` ASC),
   INDEX `fk_Contacts_Users1_idx` (`Target_UserId` ASC),
@@ -69,7 +69,7 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Sessions` (
   `SessionId` INT NOT NULL,
-  `SessionType` VARCHAR(45) NOT NULL,
+  `SessionType` VARCHAR(10) NOT NULL,
   `SessionStartDate` DATETIME NOT NULL,
   PRIMARY KEY (`SessionId`))
 ENGINE = InnoDB;
@@ -101,9 +101,9 @@ ENGINE = InnoDB;
 -- Table `c279`.`Messages`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Messages` (
-  `MessageId` INT NOT NULL,
+  `MessageId` INT NOT NULL AUTO_INCREMENT,
   `Sessions_SessionId` INT NOT NULL,
-  `EncryptedMessageContent` VARCHAR(45) NOT NULL,
+  `EncryptedMessageContent` TEXT NOT NULL,
   `Sender_UserId` INT NOT NULL,
   PRIMARY KEY (`MessageId`),
   INDEX `fk_Messages_Sessions1_idx` (`Sessions_SessionId` ASC),
@@ -125,10 +125,10 @@ ENGINE = InnoDB;
 -- Table `c279`.`Files`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Files` (
-  `fileId` INT NOT NULL,
-  `fileName` VARCHAR(45) NOT NULL,
-  `encryptedFileData` VARCHAR(45) NOT NULL,
-  `encryptedEncryptionHeader` VARCHAR(45) NOT NULL,
+  `fileId` INT NOT NULL AUTO_INCREMENT,
+  `fileName` VARCHAR(100) NOT NULL,
+  `encryptedFileData` TEXT NOT NULL,
+  `encryptedEncryptionHeader` VARCHAR(64) NOT NULL,
   `FileOwner_UserId` INT NOT NULL,
   PRIMARY KEY (`fileId`),
   INDEX `fk_Files_Users1_idx` (`FileOwner_UserId` ASC),
@@ -144,11 +144,11 @@ ENGINE = InnoDB;
 -- Table `c279`.`FileEncryptionHeaderStore`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`FileEncryptionHeaderStore` (
-  `headerId` INT NOT NULL,
+  `headerId` INT NOT NULL AUTO_INCREMENT,
   `Files_fileId` INT NOT NULL,
   `Sharer_UserId` INT NOT NULL,
   `Sharee_UserId` INT NOT NULL,
-  `encryptedEncryptionHeader` VARCHAR(45) NOT NULL,
+  `encryptedEncryptionHeader` VARCHAR(64) NOT NULL,
   PRIMARY KEY (`headerId`),
   INDEX `fk_FileEncryptionHeaderStore_Files1_idx` (`Files_fileId` ASC),
   INDEX `fk_FileEncryptionHeaderStore_Users1_idx` (`Sharer_UserId` ASC),
@@ -175,7 +175,7 @@ ENGINE = InnoDB;
 -- Table `c279`.`GroupSessionSymmetricKey`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`GroupSessionSymmetricKey` (
-  `SessionSymmetricKeyId` VARCHAR(45) NOT NULL,
+  `SessionSymmetricKeyId` INT NOT NULL AUTO_INCREMENT,
   `Owner_UserId` INT NOT NULL,
   `Sessions_SessionId` INT NOT NULL,
   INDEX `fk_GroupSessionSymmetricKey_Sessions1_idx` (`Sessions_SessionId` ASC),

@@ -26,9 +26,9 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`UserCredentials` (
   `Users_UserId` INT NOT NULL,
-  `HashedPassword` VARCHAR(64) NOT NULL,
-  `PersistentPubKey` VARCHAR(64) NOT NULL,
-  `EncryptedPersistentPrivKey` VARCHAR(64) NOT NULL,
+  `HashedPassword` VARCHAR(88) NOT NULL,
+  `PersistentPubKey` VARCHAR(88) NOT NULL,
+  `EncryptedPersistentPrivKey` VARCHAR(88) NOT NULL,
   INDEX `fk_UserCredentials_Users_idx` (`Users_UserId` ASC),
   PRIMARY KEY (`Users_UserId`),
   CONSTRAINT `fk_UserCredentials_Users`
@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS `c279`.`FileEncryptionHeaderStore` (
   `Files_fileId` INT NOT NULL,
   `Sharer_UserId` INT NOT NULL,
   `Sharee_UserId` INT NOT NULL,
-  `encryptedEncryptionHeader` VARCHAR(64) NOT NULL,
+  `encryptedEncryptionHeader` VARCHAR(88) NOT NULL,
   PRIMARY KEY (`headerId`),
   INDEX `fk_FileEncryptionHeaderStore_Files1_idx` (`Files_fileId` ASC),
   INDEX `fk_FileEncryptionHeaderStore_Users1_idx` (`Sharer_UserId` ASC),

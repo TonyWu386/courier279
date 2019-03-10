@@ -7,10 +7,21 @@ const app = express();
 const cookie = require('cookie');
 const crypto = require('crypto');
 const mysql = require('mysql');
+const cors = require('cors');
+
+
+const corsOptions = {
+    origin: 'http://localhost:3000',
+    optionsSuccessStatus: 200
+}
+
+app.use(cors(corsOptions));
+
 
 const bodyParser = require('body-parser');
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
+
 
 const session = require('express-session');
 app.use(session({
@@ -18,6 +29,7 @@ app.use(session({
     resave: false,
     saveUninitialized: true,
 }));
+
 
 const conn = mysql.createConnection({
     host : 'localhost',
@@ -33,6 +45,7 @@ conn.query('SELECT 1 + 1 AS solution', function (err, rows, fields) {
 
     console.log('If the DB is working this will show 2: ', rows[0].solution);
 });
+
 
 app.use(function (req, res, next){
     req.username = (req.session.username)? req.session.username : null;

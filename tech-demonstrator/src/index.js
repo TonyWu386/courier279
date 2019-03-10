@@ -6,6 +6,7 @@ import util from 'tweetnacl-util';
 
 
 import SceneController from './SceneController.js';
+import LoginPortal from './LoginPortal';
 
 
 
@@ -261,6 +262,7 @@ class Webapp extends React.Component {
           <div>{status}</div>
           <ol>{moves}</ol>
         </div>
+        <LoginPortal/>
       </div>
     );
   }

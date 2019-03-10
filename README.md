@@ -9,14 +9,19 @@
 ### What is Courier279?
 
 A secure and trustless messaging and sharing application that respects the privacy of its users.
-- Messages are only ever readable by intended recipients. The server will store messages, but will never be able to access anything. 
-- Files may also be shared with a single other user, or to a group. In either case, the files will be secured in the same way messages are
-- Create and manage contacts
+- End-to-end encryption for direct messages, group messages, and files
+- Files will utilize seperated-header encryption, allowing quick and flexible sharing by re-encryption of headers
+- Trustless key management will ensure the server never has access to the private data of its users
+- Create and manage contacts, and configure sharing permissions among contacts
 
-Courier279 also balances security with aesthetics:
-- Immersive first-person 3-D UI, all interactions such as file sharing, messaging, etc. will be done in this environment.
-- Customize your own environment with flexible tools
-- Visit other users in their customized environment, interact in real time.
+Courier279 offers a unique 3-D user expirence:
+- Centers on an immersive first-person 3-D operating environment (large three.js canvas within React)
+- Interactions such as viewing messages, contacts, incoming files, etc. will be done in this 3-D environment
+- Customize your own operating environment with flexible tools, and visit other users' customized environments
+
+Backend: Express + MySQL
+
+Frontend: React + three.js canvas
 
 ### Beta Features
 

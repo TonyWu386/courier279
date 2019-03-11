@@ -63,6 +63,45 @@ app.use(function (req, res, next){
 
 
 /*
+    POST /signin/
+    Logs an existing user into the webapp
+*/
+app.post('/signin/', function (req, res, next) {
+    var username = req.body.username;
+    // retrieve user from the database
+
+    conn.query(`SELECT u.Username, c.Password, c.Salt
+                FROM Users u
+                INNER JOIN UserCredentials c
+                WHERE u.Username = ?`,
+    [username], (err, rows) => {
+        if (err) return res.status(500).end(err);
+        if (rows.length > 0) return res.status(401).end("access denied");
+
+        // let storedSalt = user.salt;
+
+        // // SHA-family hashes not recommended anymore for passwords as too fast
+        // // The slow hash "PBKDF2" is better
+        // crypto.pbkdf2(req.body.password, storedSalt, 100000, 64, 'sha512', function (err, derivedKey) {
+        //     let newPasswordDigest = derivedKey.toString('base64');
+
+        //     if (user.passwordDigest !== newPasswordDigest) return res.status(401).end("access denied"); 
+
+        //     // initialize cookie
+        //     res.setHeader('Set-Cookie', cookie.serialize('username', username, {
+        //           path : '/', 
+        //           maxAge: 60 * 60 * 24 * 7
+        //     }));
+
+        //     req.session.username = req.body.username;
+        //     return res.json("user " + username + " signed in");
+        // });
+    });
+});
+
+
+
+/*
     POST /signup/
     Creates a new user for the webapp, also logs in automatically
 */
@@ -76,9 +115,9 @@ app.post('/signup/', function (req, res, next) {
 
             new_userId = rows.insertId;
 
-            conn.query(`INSERT INTO UserCredentials(Users_UserId, HashedPassword, PersistentPubKey, EncryptedPersistentPrivKey)
-                        VALUES (?,?,?,?)`,
-            [new_userId, passwordDigest, '@TODO Pub', '@TODO Priv'], (err, rows) => {
+            conn.query(`INSERT INTO UserCredentials(Users_UserId, Password, Salt, PersistentPubKey, EncryptedPersistentPrivKey)
+                        VALUES (?,?,?,?,?)`,
+            [new_userId, passwordDigest, salt, '@TODO Pub', '@TODO Priv'], (err, rows) => {
                 if (err) return res.status(500).end(conn.rollback(() => {}));
 
                 res.setHeader('Set-Cookie', cookie.serialize('username', username, {

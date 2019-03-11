@@ -26,7 +26,8 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`UserCredentials` (
   `Users_UserId` INT NOT NULL,
-  `HashedPassword` VARCHAR(88) NOT NULL,
+  `Password` VARCHAR(88) NOT NULL,
+  `Salt` VARCHAR(88) NOT NULL,
   `PersistentPubKey` VARCHAR(88) NOT NULL,
   `EncryptedPersistentPrivKey` VARCHAR(88) NOT NULL,
   INDEX `fk_UserCredentials_Users_idx` (`Users_UserId` ASC),

@@ -76,26 +76,28 @@ app.post('/signin/', function (req, res, next) {
                 WHERE u.Username = ?`,
     [username], (err, rows) => {
         if (err) return res.status(500).end(err);
-        if (rows.length > 0) return res.status(401).end("access denied");
+        if (rows.length <= 0) return res.status(401).end("access denied");
 
-        // let storedSalt = user.salt;
+        let user = rows[0];
 
-        // // SHA-family hashes not recommended anymore for passwords as too fast
-        // // The slow hash "PBKDF2" is better
-        // crypto.pbkdf2(req.body.password, storedSalt, 100000, 64, 'sha512', function (err, derivedKey) {
-        //     let newPasswordDigest = derivedKey.toString('base64');
+        let storedSalt = user.Salt;
 
-        //     if (user.passwordDigest !== newPasswordDigest) return res.status(401).end("access denied"); 
+        // SHA-family hashes not recommended anymore for passwords as too fast
+        // The slow hash "PBKDF2" is better
+        crypto.pbkdf2(req.body.password, storedSalt, 100000, 64, 'sha512', function (err, derivedKey) {
+            let newPasswordDigest = derivedKey.toString('base64');
 
-        //     // initialize cookie
-        //     res.setHeader('Set-Cookie', cookie.serialize('username', username, {
-        //           path : '/', 
-        //           maxAge: 60 * 60 * 24 * 7
-        //     }));
+            if (user.Password !== newPasswordDigest) return res.status(401).end("access denied"); 
 
-        //     req.session.username = req.body.username;
-        //     return res.json("user " + username + " signed in");
-        // });
+            // initialize cookie
+            res.setHeader('Set-Cookie', cookie.serialize('username', username, {
+                  path : '/', 
+                  maxAge: 60 * 60 * 24 * 7
+            }));
+
+            req.session.username = req.body.username;
+            return res.json("user " + username + " signed in");
+        });
     });
 });
 

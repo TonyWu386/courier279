@@ -16,7 +16,7 @@ services:
   node:
     build: ./backend/
     ports:
-      - "3000:3000"
+      - "3001:3001"
     depends_on:
       - db
     volumes:
@@ -29,12 +29,10 @@ services:
   express:
     build: ./tech-demonstrator/
     ports:
-      - "3001:3001"
+      - "3000:3000"
     depends_on:
       - node
     volumes:
       #don't mount the root directory containing 'node_modules'
       - ./tech-demonstrator/src/:/usr/src/app/src/
       - ./tech-demonstrator/public/:/usr/src/app/public/
-    links:
-      - "node:node"

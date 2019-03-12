@@ -7,8 +7,7 @@ import util from 'tweetnacl-util';
 
 import SceneController from './SceneController.js';
 import SceneTxtCtrl from './SceneTxtController.js';
-import LoginPortal from './LoginPortal';
-
+import LoginPortal from './LoginPortal.js';
 
 class PubKeyObj extends React.Component {
   constructor(props) {
@@ -41,7 +40,6 @@ class PubKeyObj extends React.Component {
     );
   }
 }
-
 
 
 
@@ -95,8 +93,6 @@ class CryptObj extends React.Component {
 
 
 
-
-
 class Webapp extends React.Component {
   constructor(props) {
     super(props);
@@ -113,7 +109,7 @@ class Webapp extends React.Component {
     const history = this.state.history;
     const current = history[history.length - 1];
     const squares = current.squares.slice();
-    
+
     squares[i] = (this.state.xIsNext)? 'X' : 'O';
     this.setState({
       history: history.concat([{

@@ -104,6 +104,7 @@ app.post('/signin/', function (req, res, next) {
 
 
 
+
 /*
     POST /signup/
     Creates a new user for the webapp, also logs in automatically
@@ -162,6 +163,52 @@ app.post('/signup/', function (req, res, next) {
         });
     });
 });
+
+
+
+
+
+/*  For creating a new contacts
+    POST /api/contacts/
+*/
+app.post('/api/contacts/', function (req, res, next) {
+    if (req.username == null) return res.status(403).end("Not signed in");
+
+    let owning_username = req.body.owning_username;
+    let target_username = req.body.target_username;
+    let contact_type = "TODOfriend";
+
+    let owning_id = null;
+    let target_id = null;
+
+    if (req.username != owning_username) return res.status(403).end("Not signed in as owning user");
+
+    conn.query(`SELECT UserId From Users WHERE Username = ?;`, [owning_username], (err, rows) => {
+        if (err) return res.status(500).end(err);
+        if (!rows.length) return res.status(500).end("Can't find contact owner in DB");
+
+        owning_id = rows[0].UserId;
+
+        conn.query(`SELECT UserId From Users WHERE Username = ?;`, [target_username], (err, rows) => {
+            if (err) return res.status(500).end(err);
+            if (!rows.length) return res.status(500).end("Can't find contact target in DB");
+
+            target_id = rows[0].UserId;
+
+            if (owning_id == target_id) return res.status(400).end("Can't add user as contact to itself");
+
+            conn.query(`INSERT INTO Contacts(Owning_UserId, Target_UserId, ContactType)
+                        VALUES (?,?,?)`,
+            [owning_id, target_id, contact_type], (err, rows) => {
+                if (err) return res.status(500).end(err);
+
+                return res.json("added contact, id " + rows.insertId);
+            });
+        });
+    });
+});
+
+
 
 const http = require('http');
 const PORT = 3001;

@@ -15,7 +15,7 @@ USE `c279` ;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Users` (
   `UserId` INT NOT NULL AUTO_INCREMENT,
-  `Username` VARCHAR(45) NOT NULL,
+  `Username` VARCHAR(45) NOT NULL UNIQUE,
   `RealName` VARCHAR(45) NULL,
   PRIMARY KEY (`UserId`))
 ENGINE = InnoDB;
@@ -48,7 +48,7 @@ CREATE TABLE IF NOT EXISTS `c279`.`Contacts` (
   `ContactsId` INT NOT NULL AUTO_INCREMENT,
   `Owning_UserId` INT NOT NULL,
   `Target_UserId` INT NOT NULL,
-  `DateAdded` DATETIME NOT NULL,
+  `DateAdded` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ContactType` VARCHAR(10) NOT NULL,
   PRIMARY KEY (`ContactsId`),
   INDEX `fk_Contacts_Users2_idx` (`Owning_UserId` ASC),

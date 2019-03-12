@@ -4,7 +4,7 @@ import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 
 
-const server = "http://localhost:3001";
+const server = "http://localhost:3000";
 
 export default class LoginPortal extends React.Component {
   constructor(props) {

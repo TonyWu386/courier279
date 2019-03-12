@@ -62,6 +62,7 @@ app.use(function (req, res, next){
 });
 
 
+
 /*
     POST /signin/
     Logs an existing user into the webapp
@@ -108,8 +109,13 @@ app.post('/signin/', function (req, res, next) {
     Creates a new user for the webapp, also logs in automatically
 */
 app.post('/signup/', function (req, res, next) {
-    var username = req.body.username;
+    let username = req.body.username;
+    let pubkey = req.body.pubkey;
+    let enc_privkey_nonce = req.body.enc_privkey_nonce;
+    let enc_privkey = req.body.enc_privkey;
     let salt = crypto.randomBytes(16).toString('base64');
+
+    if ((!enc_privkey) || (!enc_privkey_nonce) || (!pubkey)) return res.status(400).end("Did not get required crypt data");
 
     function create_user_routine(passwordDigest) {
         conn.query('INSERT INTO Users(Username, RealName) VALUES (?,?)', [username, '@TODO Bob'], (err, rows) => {
@@ -117,9 +123,9 @@ app.post('/signup/', function (req, res, next) {
 
             new_userId = rows.insertId;
 
-            conn.query(`INSERT INTO UserCredentials(Users_UserId, Password, Salt, PersistentPubKey, EncryptedPersistentPrivKey)
-                        VALUES (?,?,?,?,?)`,
-            [new_userId, passwordDigest, salt, '@TODO Pub', '@TODO Priv'], (err, rows) => {
+            conn.query(`INSERT INTO UserCredentials(Users_UserId, Password, Salt, PubKey, EncryptedPrivKey, EncryptedPrivKeyNonce)
+                        VALUES (?,?,?,?,?,?)`,
+            [new_userId, passwordDigest, salt, pubkey.toString('base64'), enc_privkey.toString('base64'), enc_privkey_nonce.toString('base64')], (err, rows) => {
                 if (err) return res.status(500).end(conn.rollback(() => {}));
 
                 res.setHeader('Set-Cookie', cookie.serialize('username', username, {
@@ -140,7 +146,7 @@ app.post('/signup/', function (req, res, next) {
 
     // SHA-family hashes not recommended anymore for passwords as too fast
     // The slow hash "PBKDF2" is better
-    crypto.pbkdf2(req.body.password, salt, 100000, 64, 'sha512', function (err, derivedKey) {
+    crypto.pbkdf2(req.body.password.toString('base64'), salt, 100000, 64, 'sha512', function (err, derivedKey) {
         if (err) return res.status(500).end(err);
         let passwordDigest = derivedKey.toString('base64');
 

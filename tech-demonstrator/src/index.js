@@ -6,8 +6,7 @@ import util from 'tweetnacl-util';
 
 
 import SceneController from './SceneController.js';
-import LoginPortal from './LoginPortal';
-
+import LoginPortal from './LoginPortal.js';
 
 
 function calculateWinner(squares) {
@@ -114,7 +113,6 @@ class PubKeyObj extends React.Component {
 
 
 
-
 class CryptObj extends React.Component {
   constructor(props) {
     super(props);
@@ -161,8 +159,6 @@ class CryptObj extends React.Component {
     )
   };
 }
-
-
 
 
 

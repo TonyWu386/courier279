@@ -1,0 +1,3 @@
+If you're using Docker, look for config changes in:
+- the backend's app.js
+- the React app's package.json

@@ -11,7 +11,8 @@ const cors = require('cors');
 
 
 const corsOptions = {
-    origin: 'http://localhost:3000',
+    // first one is for docker, the second bare-metal
+    origin: ['http://10.0.0.2:3000', 'http://localhost:3000'],
     optionsSuccessStatus: 200
 }
 
@@ -32,9 +33,13 @@ app.use(session({
 
 
 const conn = mysql.createConnection({
+    // ATTENTION switch to the other host if using docker
+    // host : 'db',
     host : 'localhost',
     user : 'c279-user',
     password : 'ADD DB USER PASSWORD HERE',
+    // switch to this password for docker
+    // password : 'HCvZT3dlYb',
     database : 'c279',
 })
 

@@ -167,7 +167,7 @@ export default class SceneTxt extends React.Component {
         const texturet = new THREE.TextureLoader().load(this.tempcanvas.toDataURL());
         const materiattemp = new THREE.MeshBasicMaterial({ map: texturet })
         
-        newcube.material = materialtemp;
+        newcube.material = materiattemp;
         newcube.position.y = msgslength * 3;
         this.scene.add(newcube);
         console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);

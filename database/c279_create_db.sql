@@ -45,12 +45,12 @@ ENGINE = InnoDB;
 -- Table `c279`.`Contacts`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Contacts` (
-  `ContactsId` INT NOT NULL AUTO_INCREMENT,
+  `ContactId` INT NOT NULL AUTO_INCREMENT,
   `Owning_UserId` INT NOT NULL,
   `Target_UserId` INT NOT NULL,
   `DateAdded` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `ContactType` VARCHAR(10) NOT NULL,
-  PRIMARY KEY (`ContactsId`),
+  PRIMARY KEY (`ContactId`),
   INDEX `fk_Contacts_Users2_idx` (`Owning_UserId` ASC),
   INDEX `fk_Contacts_Users1_idx` (`Target_UserId` ASC),
   CONSTRAINT `fk_Contacts_Users2`

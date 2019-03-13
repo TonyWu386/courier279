@@ -54,6 +54,7 @@ conn.query('SELECT 1 + 1 AS solution', function (err, rows, fields) {
 
 app.use(function (req, res, next){
     req.username = (req.session.username)? req.session.username : null;
+    req.userId = (req.session.userId)? req.session.userId : null;
 
     if (req.session.username == null) {
         res.setHeader('Set-Cookie', cookie.serialize('username', '', {
@@ -76,7 +77,7 @@ app.post('/signin/', function (req, res, next) {
     var username = req.body.username;
     // retrieve user from the database
 
-    conn.query(`SELECT u.Username, c.Password, c.Salt
+    conn.query(`SELECT u.UserId, u.Username, c.Password, c.Salt
                 FROM Users u
                 INNER JOIN UserCredentials c
                 WHERE u.Username = ?`,
@@ -102,6 +103,8 @@ app.post('/signin/', function (req, res, next) {
             }));
 
             req.session.username = req.body.username;
+            req.session.id = user.UserId;
+
             return res.json("user " + username + " signed in");
         });
     });
@@ -140,6 +143,7 @@ app.post('/signup/', function (req, res, next) {
                 }));
                 
                 req.session.username = req.body.username;
+                req.session.userId = new_userId;
 
                 conn.commit((err) => {
                     if (err) return res.status(500).end(err);
@@ -212,6 +216,71 @@ app.post('/api/contacts/', function (req, res, next) {
         });
     });
 });
+
+
+
+
+/*  Gets all contacts owned by username
+    POST /api/contacts/?username=foo
+*/
+app.get('/api/contacts/', function (req, res, next) {
+    if (req.username == null) return res.status(403).end("Not signed in");
+
+    let owning_username = req.query.username;
+
+    if (!owning_username) return res.status(400).end("Unable to parse username for getting comments");
+
+    if (req.username != owning_username) return res.status(403).end("Not signed in as owning user");
+
+    conn.query(`SELECT c.ContactId, c.DateAdded, c.ContactType, ut.Username
+                FROM Contacts c
+                INNER JOIN Users ut
+                ON ut.UserId = c.Target_UserId
+                WHERE c.Owning_UserId = ?;`,
+    [req.userId], (err, rows) => {
+        if (err) return res.status(500).end(err);
+
+        let results = [];
+
+        rows.forEach(element => {
+            results.push({
+                'ContactId' : element.ContactId,
+                'TargetUsername' : element.Username,
+                'DateAdded' : element.DateAdded,
+                'ContactType' : element.ContactType,
+            });
+        });
+
+        return res.json(results);
+    });
+});
+
+
+
+
+/*  Delete a contact by ContactId
+    DELETE /api/contacts/:id/
+*/
+app.delete('/api/contacts/:id/', function (req, res, next) {
+    if (req.username == null) return res.status(403).end("Not signed in");
+
+    if (!req.params.id) return res.status(400).end("Unable to parse ContactId for deletion");
+
+    const contactId = req.params.id;
+
+    conn.query(`SELECT Owning_UserId FROM Contacts WHERE ContactId = ?`, [contactId], (err, rows) => {
+        if (err) return res.status(500).end(err);
+        if (!rows.length) return res.status(400).end("ContactId " + contactId + " not found");
+        if (rows[0].Owning_UserId != req.userId) return res.status(403).end("Not signed in as owning user");
+
+        conn.query(`DELETE FROM Contacts WHERE ContactId = ?`, [contactId], (err, rows) => {
+            if (err) return res.status(500).end(err);
+
+            return res.json("deleted contact at id " + contactId);
+        });
+    });
+});
+
 
 
 

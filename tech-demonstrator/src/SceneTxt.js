@@ -124,7 +124,7 @@ export default class SceneTxt extends React.Component {
   render() {
     return (
       <div
-        style={{ width: '400px', height: '400px' }}
+        style={{ width: '900px', height: '900px' }}
         ref={(mount) => { this.mount = mount }}
       />
     )

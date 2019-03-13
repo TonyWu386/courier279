@@ -3,7 +3,7 @@ import axios from 'axios';
 import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 
-
+// ========== TODO ============ change this for production
 const server = "http://localhost:3000";
 
 export default class LoginPortal extends React.Component {

@@ -9,6 +9,7 @@ import SceneController from './SceneController.js';
 import SceneTxtCtrl from './SceneTxtController.js';
 import LoginPortal from './LoginPortal.js';
 
+// TODO need to sort through and delete stuff we don't actually need
 class PubKeyObj extends React.Component {
   constructor(props) {
     super(props);
@@ -154,28 +155,32 @@ class Webapp extends React.Component {
     let cryptResult = this.state.cryptResult;
 
     return (
-      <div className="game">
-        <div className="crypt-obj">
-          <CryptObj
-            password="abcdef"
-            handleCryptResult={(result) => this.handleCryptResult(result)}
-          />
+      <div className="contain-all">
+        <div className="game">
+          <div className="crypt-obj">
+            <CryptObj
+              password="abcdef"
+              handleCryptResult={(result) => this.handleCryptResult(result)}
+            />
+          </div>
+          <div className="pubkey-obj">
+            <PubKeyObj/>
+          </div>
+          <h4>Outside Crypt Result: {cryptResult}</h4>
+          <div className="game-info">
+            <div>{status}</div>
+            <ol>{moves}</ol>
+          </div>
         </div>
-        <div className="pubkey-obj">
-          <PubKeyObj/>
+        <br />
+        <div className="login-contain">
+          <div className="instructext">Sign in to view messages</div>
+          <LoginPortal/>
         </div>
-        <h4>Outside Crypt Result: {cryptResult}</h4>
-        <div className="threejs-canvas">
-          <SceneController/>
-        </div>
+        <br />
         <div className="threejs-text">
-          <SceneTxtCtrl/>
+            <SceneTxtCtrl/>
         </div>
-        <div className="game-info">
-          <div>{status}</div>
-          <ol>{moves}</ol>
-        </div>
-        <LoginPortal/>
       </div>
     );
   }

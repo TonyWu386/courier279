@@ -82,7 +82,7 @@ app.post('/signin/', function (req, res, next) {
                 INNER JOIN UserCredentials c
                 WHERE u.Username = ?`,
     [username], (err, rows) => {
-        if (err) return res.status(500).end(err);
+        if (err) return res.status(500).end("Internal MySQL Error");
         if (rows.length <= 0) return res.status(401).end("access denied");
 
         let user = rows[0];
@@ -161,7 +161,7 @@ app.post('/signup/', function (req, res, next) {
         let passwordDigest = derivedKey.toString('base64');
 
         conn.query('SELECT 1 FROM Users WHERE Username = ?', [username], (err, rows) => {
-            if (err) return res.status(500).end(err);
+            if (err) return res.status(500).end("Internal MySQL Error");
             if (rows.length > 0) return res.status(409).end("username " + username + " already exists");
 
             conn.beginTransaction((err) => {
@@ -185,7 +185,7 @@ app.post('/api/contacts/', function (req, res, next) {
 
     let owning_username = req.body.owning_username;
     let target_username = req.body.target_username;
-    let contact_type = "TODOfriend";
+    let contact_type = req.body.contact_type;
 
     let owning_id = null;
     let target_id = null;
@@ -193,25 +193,32 @@ app.post('/api/contacts/', function (req, res, next) {
     if (req.username != owning_username) return res.status(403).end("Not signed in as owning user");
 
     conn.query(`SELECT UserId From Users WHERE Username = ?;`, [owning_username], (err, rows) => {
-        if (err) return res.status(500).end(err);
+        if (err) return res.status(500).end("Internal MySQL Error");
         if (!rows.length) return res.status(500).end("Can't find contact owner in DB");
 
         owning_id = rows[0].UserId;
 
         conn.query(`SELECT UserId From Users WHERE Username = ?;`, [target_username], (err, rows) => {
-            if (err) return res.status(500).end(err);
+            if (err) return res.status(500).end("Internal MySQL Error");
             if (!rows.length) return res.status(500).end("Can't find contact target in DB");
 
             target_id = rows[0].UserId;
 
             if (owning_id == target_id) return res.status(400).end("Can't add user as contact to itself");
 
-            conn.query(`INSERT INTO Contacts(Owning_UserId, Target_UserId, ContactType)
-                        VALUES (?,?,?)`,
-            [owning_id, target_id, contact_type], (err, rows) => {
-                if (err) return res.status(500).end(err);
+            conn.query(`SELECT ContactTypeId FROM ContactTypes WHERE ContactType = ?`, [contact_type], (err, rows) => {
+                if (err) return res.status(500).end("Internal MySQL Error");
+                if (!rows.length) return res.status(500).end("Invalid Contact Type");
 
-                return res.json("added contact, id " + rows.insertId);
+                let contact_type_id = rows[0].ContactTypeId;
+
+                conn.query(`INSERT INTO Contacts(Owning_UserId, Target_UserId, ContactTypes_ContactTypeId)
+                        VALUES (?,?,?)`,
+                [owning_id, target_id, contact_type_id], (err, rows) => {
+                    if (err) return res.status(500).end("Internal MySQL Error");
+
+                    return res.json("added contact, id " + rows.insertId);
+                });
             });
         });
     });
@@ -232,13 +239,15 @@ app.get('/api/contacts/', function (req, res, next) {
 
     if (req.username != owning_username) return res.status(403).end("Not signed in as owning user");
 
-    conn.query(`SELECT c.ContactId, c.DateAdded, c.ContactType, ut.Username
+    conn.query(`SELECT c.ContactId, c.DateAdded, ct.ContactType, ut.Username
                 FROM Contacts c
                 INNER JOIN Users ut
                 ON ut.UserId = c.Target_UserId
+                INNER JOIN ContactTypes ct
+                ON ct.ContactTypeId = c.ContactTypes_ContactTypeId
                 WHERE c.Owning_UserId = ?;`,
     [req.userId], (err, rows) => {
-        if (err) return res.status(500).end(err);
+        if (err) return res.status(500).end("Internal MySQL Error");
 
         let results = [];
 
@@ -269,12 +278,13 @@ app.delete('/api/contacts/:id/', function (req, res, next) {
     const contactId = req.params.id;
 
     conn.query(`SELECT Owning_UserId FROM Contacts WHERE ContactId = ?`, [contactId], (err, rows) => {
-        if (err) return res.status(500).end(err);
+        if (err) return res.status(500).end("Internal MySQL Error");
+
         if (!rows.length) return res.status(400).end("ContactId " + contactId + " not found");
         if (rows[0].Owning_UserId != req.userId) return res.status(403).end("Not signed in as owning user");
 
         conn.query(`DELETE FROM Contacts WHERE ContactId = ?`, [contactId], (err, rows) => {
-            if (err) return res.status(500).end(err);
+            if (err) return res.status(500).end("Internal MySQL Error");
 
             return res.json("deleted contact at id " + contactId);
         });

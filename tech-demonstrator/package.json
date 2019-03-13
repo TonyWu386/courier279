@@ -32,5 +32,6 @@
   "devDependencies": {},
   "author": "",
   "license": "ISC",
+  "//": "ATTENTION switch proxy to http://node:3001 if using Docker",
   "proxy": "http://localhost:3001"
 }

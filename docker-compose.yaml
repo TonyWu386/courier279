@@ -5,36 +5,56 @@ services:
 
   db:
     build: ./database/
+    command: mysqld --default-authentication-plugin=mysql_native_password
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ADDHERE
+      MYSQL_ROOT_PASSWORD: HCvZT3dlYb
       MYSQL_DATABASE: c279
       MYSQL_USER: c279-user
-      MYSQL_PASSWORD: ADDHERE
+      MYSQL_PASSWORD: HCvZT3dlYb
+    networks:
+      internal:
+        ipv4_address: 10.0.0.4
 
 
   node:
     build: ./backend/
+    expose:
+      - 3001
     ports:
-      - "3000:3000"
+      - 3001:3001
     depends_on:
       - db
     volumes:
       - ./backend/app.js:/usr/src/app/app.js
     command: bash -c 'sleep 5; node app.js'
     links:
-      - "db:db"
+      - db
+    networks:
+      internal:
+        ipv4_address: 10.0.0.3
 
 
   express:
     build: ./tech-demonstrator/
     ports:
-      - "3001:3001"
+      - 3000:3000
     depends_on:
       - node
     volumes:
-      #don't mount the root directory containing 'node_modules'
       - ./tech-demonstrator/src/:/usr/src/app/src/
       - ./tech-demonstrator/public/:/usr/src/app/public/
+    command: bash -c 'sleep 5; npm start'
     links:
-      - "node:node"
+      - node
+    networks:
+      internal:
+        ipv4_address: 10.0.0.2
+
+      
+networks:
+  internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24

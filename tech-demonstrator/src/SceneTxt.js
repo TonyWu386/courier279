@@ -15,6 +15,8 @@ export default class SceneTxt extends React.Component {
     // TODO apparently it is bad style to copy props into state
     this.state = {
       txt: this.props.txt,
+      msgs: this.props.msgs,
+      createdSceneObj: [],
     }
   }
 
@@ -58,7 +60,7 @@ export default class SceneTxt extends React.Component {
 
     const cube = new THREE.Mesh(geometry, material)
 
-    camera.position.z = 4
+    camera.position.z = 8
     scene.add(cube)
     renderer.setClearColor('#000000')
     renderer.setSize(width, height)
@@ -112,6 +114,25 @@ export default class SceneTxt extends React.Component {
     this.material.map = this.texture;
 
     this.cube.rotation.y += 0.02;
+
+
+    // update # objects
+    let msgslength = this.state.msgs().length;
+    if (this.state.createdSceneObj.length < msgslength) {
+      // TODO extremely rough. testing only.
+      // we'd actually want a smart detection of placements and text
+      let newcube = this.cube.clone();
+      newcube.position.y = msgslength * 3;
+      // VERY IMPORTANT, STATE SETTING IS ASYNC
+      this.setState((old) => ({
+        createdSceneObj : [...old.createdSceneObj, newcube],
+      }), () => {
+        this.scene.add(newcube);
+        console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
+      });
+    }
+
+    // TODO removal case
 
     this.renderScene();
     this.frameId = window.requestAnimationFrame(this.animate);

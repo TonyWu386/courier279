@@ -11,6 +11,8 @@ export default class SceneTxtController extends React.Component {
 
     this.state = {
       txt: "Text goes here",
+      existingMsg: [],
+      hasBeenChanged: false, // currently unused. Will want later
     }
   }
 
@@ -22,6 +24,19 @@ export default class SceneTxtController extends React.Component {
     });
   }
 
+  handleAdd(e) {
+    // be very careful with immutability
+    this.setState((old) => ({
+      existingMsg : [...old.existingMsg, old.txt],
+    }), () => {
+      console.log('says ', this.state.existingMsg);
+    });
+  }
+
+  queryMsg() {
+    return this.state.existingMsg
+  }
+
   queryTxt() {
     return this.state.txt
   }
@@ -30,8 +45,10 @@ export default class SceneTxtController extends React.Component {
     return (
       <div>
         <input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
+        <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
         <SceneTxt 
           txt={() => this.queryTxt()}
+          msgs={() => this.queryMsg()}
         />
       </div>
     );

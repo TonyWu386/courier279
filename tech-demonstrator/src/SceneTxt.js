@@ -11,6 +11,7 @@ export default class SceneTxt extends React.Component {
     this.start = this.start.bind(this)
     this.stop = this.stop.bind(this)
     this.animate = this.animate.bind(this)
+    this.textwrap = this.textwrap.bind(this)
     // TODO apparently it is bad style to copy props into state
     this.state = {
       txt: this.props.txt,
@@ -29,10 +30,11 @@ export default class SceneTxt extends React.Component {
       1000
     )
     const renderer = new THREE.WebGLRenderer({ antialias: true })
-    const geometry = new THREE.BoxGeometry(2, 2, 2)
+    const geometry = new THREE.BoxGeometry(3, 3, 3)
 
     const chatexture = document.createElement('canvas');
     chatexture.height = 256;
+    this.linespacing = chatexture.height/8;
     chatexture.width = 256;
     const chatdraw = chatexture.getContext('2d');
 
@@ -93,7 +95,15 @@ export default class SceneTxt extends React.Component {
     this.canvascontext.fillStyle = "rgba(250,250,250,1)";
     this.canvascontext.fillRect(0, 0, this.canvastxt.width, this.canvastxt.height);
     this.canvascontext.fillStyle = "rgba(25,25,25,1)";
-    this.canvascontext.fillText(this.state.txt(), 4, this.canvastxt.height/2);
+    // text wrap processing, should be elsewhere??
+    let wrapped = this.textwrap();
+    let space = 0;
+
+    wrapped.forEach(function(line) {
+      // there is no decent built in height field...
+      space += this.linespacing;
+      this.canvascontext.fillText(line, 4, space);
+    }.bind(this));
 
     // TODO React probably has a way for us to not do this every frame
     // We don't need to, after all
@@ -101,10 +111,10 @@ export default class SceneTxt extends React.Component {
     this.texture.needsUpdate = true;
     this.material.map = this.texture;
 
-    this.cube.rotation.y += 0.02
+    this.cube.rotation.y += 0.02;
 
-    this.renderScene()
-    this.frameId = window.requestAnimationFrame(this.animate)
+    this.renderScene();
+    this.frameId = window.requestAnimationFrame(this.animate);
   }
 
   renderScene() {
@@ -118,5 +128,36 @@ export default class SceneTxt extends React.Component {
         ref={(mount) => { this.mount = mount }}
       />
     )
+  }
+
+  textwrap() {
+    // some credits to stackoverflow
+    // split by words so we don't cutoff
+    // TODO does NOT react well to multiple spaces
+    let tokens = this.state.txt().split(" ");
+    let wrappedbyline = [];
+    let curline = tokens[0];
+
+    // JS witchcraft
+    let widefunc =  function(token) {
+      // do not want to exceed canvas width
+      // TODO quite crude and does not account for space length
+      let wordslen = this.canvascontext.measureText(curline + " " + token).width;
+      // Set a buffer zone so text does not go right to the edge
+      // TODO smarter edge detection
+      if (wordslen > this.canvastxt.width - 32) {
+        // too long, new line
+        wrappedbyline.push(curline);
+        curline = token;
+      } else {
+        // add to line
+        curline += " " + token;
+      }
+    }.bind(this);
+
+    tokens.slice(1).forEach(widefunc);
+    // push final line
+    wrappedbyline.push(curline);
+    return wrappedbyline;
   }
 }

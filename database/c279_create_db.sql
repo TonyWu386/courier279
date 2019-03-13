@@ -126,9 +126,10 @@ ENGINE = InnoDB;
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`DirectMessages` (
   `DirectMessageId` INT NOT NULL AUTO_INCREMENT,
-  `EncryptedMessageContent` TEXT NOT NULL,
+  `EncryptedText` TEXT NOT NULL,
   `Sender_UserId` INT NOT NULL,
   `Receiver_UserId` INT NOT NULL,
+  `DateSent` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`DirectMessageId`),
   INDEX `fk_DirectMessages_Users1_idx` (`Sender_UserId` ASC),
   INDEX `fk_DirectMessages_Users2_idx` (`Receiver_UserId` ASC),
@@ -151,7 +152,7 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `c279`.`GroupMessages` (
   `GroupMessageId` INT NOT NULL AUTO_INCREMENT,
   `Sessions_SessionId` INT NOT NULL,
-  `EncryptedMessageContent` TEXT NOT NULL,
+  `EncryptedText` TEXT NOT NULL,
   `Sender_UserId` INT NOT NULL,
   PRIMARY KEY (`GroupMessageId`),
   INDEX `fk_GroupMessages_Sessions1_idx` (`Sessions_SessionId` ASC),

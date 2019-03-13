@@ -24,4 +24,11 @@ printf "\n\nTesting bad contact auth...\n"
 curl --header 'Content-Type: application/json' -b cookiefileE localhost:3001/api/contacts/?username=testuserA
 printf "\n"
 curl --header 'Content-Type: application/json' --request DELETE -b cookiefileE localhost:3001/api/contacts/2/
+
+printf "\n\nTesting sending messages...\n"
+curl --header 'Content-Type: application/json' --request POST --data '{"target_username":"testuserB", "encrypted_body":"x"}' -b cookiefileA localhost:3001/api/messages/direct/
+
+printf "\n\nTesting getting messages...\n"
+curl --header 'Content-Type: application/json' -b cookiefileB localhost:3001/api/messages/direct/?sender=testuserA
+
 printf "\nDone\n"

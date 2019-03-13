@@ -235,7 +235,7 @@ app.get('/api/contacts/', function (req, res, next) {
 
     let owning_username = req.query.username;
 
-    if (!owning_username) return res.status(400).end("Unable to parse username for getting comments");
+    if (!owning_username) return res.status(400).end("Unable to parse username for getting contacts");
 
     if (req.username != owning_username) return res.status(403).end("Not signed in as owning user");
 
@@ -288,6 +288,69 @@ app.delete('/api/contacts/:id/', function (req, res, next) {
 
             return res.json("deleted contact at id " + contactId);
         });
+    });
+});
+
+
+
+/*  For pushing a new direct message to the server
+    POST /api/messages/direct/
+*/
+app.post('/api/messages/direct/', function (req, res, next) {
+    if (req.username == null) return res.status(403).end("Not signed in");
+
+    let target_username = req.body.target_username;
+    let encrypted_body = req.body.encrypted_body;
+
+    let target_id = null;
+    let senderId = req.userId;
+
+    conn.query(`SELECT UserId From Users WHERE Username = ?;`, [target_username], (err, rows) => {
+        if (err) return res.status(500).end("Internal MySQL Error");
+        if (!rows.length) return res.status(500).end("Can't find target in DB");
+
+        target_id = rows[0].UserId;
+
+        conn.query(`INSERT INTO DirectMessages(Sender_UserId, Receiver_UserId, EncryptedText) VALUES (?,?,?)`,
+        [senderId, target_id, encrypted_body], (err, rows) => {
+            if (err) return res.status(500).end("Internal MySQL Error");
+
+            return res.json("sent message to " + target_username);
+        });
+    });
+});
+
+
+/*  For getting direct messages sent by a username, received by the logged-in user
+    GET /api/messages/direct/?sender=foo
+*/
+app.get('/api/messages/direct/', function (req, res, next) {
+    if (req.username == null) return res.status(403).end("Not signed in");
+
+    let sending_username = req.query.sender;
+
+    if (!sending_username) return res.status(400).end("Unable to parse username for getting messages");
+
+    conn.query(`SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername
+                FROM DirectMessages m
+                INNER JOIN Users u
+                ON m.Sender_UserId = u.UserId
+                WHERE m.Receiver_UserId = ? AND m.Sender_UserId IN (SELECT UserId FROM Users WHERE Username = ?)`,
+    [req.userId, sending_username], (err, rows) => {
+        if (err) return res.status(500).end("Internal MySQL Error");
+
+        let results = [];
+
+        rows.forEach(element => {
+            results.push({
+                'DirectMessageId' : element.DirectMessageId,
+                'EncryptedText' : element.EncryptedText,
+                'SenderUsername' : element.SenderUsername,
+                'ReceiverUsername' : req.Username,
+            });
+        });
+
+        return res.json(results);
     });
 });
 

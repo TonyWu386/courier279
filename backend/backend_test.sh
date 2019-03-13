@@ -5,10 +5,11 @@ curl --header 'Content-Type: application/json' --request POST --data '{"username
 curl --header 'Content-Type: application/json' --request POST --data '{"username":"testuserD", "password":"hunter4", "pubkey":"x", "enc_privkey_nonce":"x", "enc_privkey":"x"}' -c cookiefileD localhost:3001/signup/
 curl --header 'Content-Type: application/json' --request POST --data '{"username":"testuserE", "password":"hunter5", "pubkey":"x", "enc_privkey_nonce":"x", "enc_privkey":"x"}' -c cookiefileE localhost:3001/signup/
 
-printf "\nAdding test contacts...\n"
-curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserA", "target_username":"testuserB"}' -b cookiefileA localhost:3001/api/contacts/
-curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserA", "target_username":"testuserC"}' -b cookiefileA localhost:3001/api/contacts/
-curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserB", "target_username":"testuserD"}' -b cookiefileB localhost:3001/api/contacts/
+printf "\n\nAdding test contacts...\n"
+curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserA", "target_username":"testuserB", "contact_type":"Friend"}' -b cookiefileA localhost:3001/api/contacts/
+curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserA", "target_username":"testuserC", "contact_type":"Friend"}' -b cookiefileA localhost:3001/api/contacts/
+curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserB", "target_username":"testuserD", "contact_type":"Friend"}' -b cookiefileB localhost:3001/api/contacts/
+curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserB", "target_username":"testuserE", "contact_type":"Blocked"}' -b cookiefileB localhost:3001/api/contacts/
 
 printf "\nTesting GET + DELETE contacts...\n"
 curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/contacts/?username=testuserA
@@ -19,7 +20,7 @@ curl --header 'Content-Type: application/json' --request DELETE -b cookiefileA l
 printf "\n"
 curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/contacts/?username=testuserA
 
-printf "\nTesting bad contact auth...\n"
+printf "\n\nTesting bad contact auth...\n"
 curl --header 'Content-Type: application/json' -b cookiefileE localhost:3001/api/contacts/?username=testuserA
 printf "\n"
 curl --header 'Content-Type: application/json' --request DELETE -b cookiefileE localhost:3001/api/contacts/2/

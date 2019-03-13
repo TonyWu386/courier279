@@ -49,10 +49,11 @@ CREATE TABLE IF NOT EXISTS `c279`.`Contacts` (
   `Owning_UserId` INT NOT NULL,
   `Target_UserId` INT NOT NULL,
   `DateAdded` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `ContactType` VARCHAR(10) NOT NULL,
+  `ContactTypes_ContactTypeId` INT NOT NULL,
   PRIMARY KEY (`ContactId`),
   INDEX `fk_Contacts_Users2_idx` (`Owning_UserId` ASC),
   INDEX `fk_Contacts_Users1_idx` (`Target_UserId` ASC),
+  INDEX `fk_Contacts_ContactTypes1_idx` (`ContactTypes_ContactTypeId` ASC),
   CONSTRAINT `fk_Contacts_Users2`
     FOREIGN KEY (`Owning_UserId`)
     REFERENCES `c279`.`Users` (`UserId`)
@@ -62,8 +63,29 @@ CREATE TABLE IF NOT EXISTS `c279`.`Contacts` (
     FOREIGN KEY (`Target_UserId`)
     REFERENCES `c279`.`Users` (`UserId`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_Contacts_ContactTypes1`
+    FOREIGN KEY (`ContactTypes_ContactTypeId`)
+    REFERENCES `c279`.`ContactTypes` (`ContactTypeId`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION
+    )
 ENGINE = InnoDB;
+
+
+-- STATIC DATA TABLE
+CREATE TABLE IF NOT EXISTS `c279`.`ContactTypes` (
+  `ContactTypeId` INT NOT NULL,
+  `ContactType` VARCHAR(45) NOT NULL,
+  PRIMARY KEY (`ContactTypeId`))
+ENGINE = InnoDB;
+
+START TRANSACTION;
+INSERT INTO ContactTypes(ContactTypeId, ContactType) VALUES(1, "Trusted Friend");
+INSERT INTO ContactTypes(ContactTypeId, ContactType) VALUES(2, "Friend");
+INSERT INTO ContactTypes(ContactTypeId, ContactType) VALUES(3, "Guest");
+INSERT INTO ContactTypes(ContactTypeId, ContactType) VALUES(4, "Blocked");
+COMMIT;
 
 
 -- -----------------------------------------------------
@@ -100,22 +122,46 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
--- Table `c279`.`Messages`
+-- Table `c279`.`DirectMessages`
 -- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `c279`.`Messages` (
-  `MessageId` INT NOT NULL AUTO_INCREMENT,
+CREATE TABLE IF NOT EXISTS `c279`.`DirectMessages` (
+  `DirectMessageId` INT NOT NULL AUTO_INCREMENT,
+  `EncryptedMessageContent` TEXT NOT NULL,
+  `Sender_UserId` INT NOT NULL,
+  `Receiver_UserId` INT NOT NULL,
+  PRIMARY KEY (`DirectMessageId`),
+  INDEX `fk_DirectMessages_Users1_idx` (`Sender_UserId` ASC),
+  INDEX `fk_DirectMessages_Users2_idx` (`Receiver_UserId` ASC),
+  CONSTRAINT `fk_DirectMessages_Users1`
+    FOREIGN KEY (`Sender_UserId`)
+    REFERENCES `c279`.`Users` (`UserId`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_DirectMessages_Users2`
+    FOREIGN KEY (`Receiver_UserId`)
+    REFERENCES `c279`.`Users` (`UserId`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
+-- Table `c279`.`GroupMessages`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `c279`.`GroupMessages` (
+  `GroupMessageId` INT NOT NULL AUTO_INCREMENT,
   `Sessions_SessionId` INT NOT NULL,
   `EncryptedMessageContent` TEXT NOT NULL,
   `Sender_UserId` INT NOT NULL,
-  PRIMARY KEY (`MessageId`),
-  INDEX `fk_Messages_Sessions1_idx` (`Sessions_SessionId` ASC),
-  INDEX `fk_Messages_Users1_idx` (`Sender_UserId` ASC),
-  CONSTRAINT `fk_Messages_Sessions1`
+  PRIMARY KEY (`GroupMessageId`),
+  INDEX `fk_GroupMessages_Sessions1_idx` (`Sessions_SessionId` ASC),
+  INDEX `fk_GroupMessages_Users1_idx` (`Sender_UserId` ASC),
+  CONSTRAINT `fk_GroupMessages_Sessions1`
     FOREIGN KEY (`Sessions_SessionId`)
     REFERENCES `c279`.`Sessions` (`SessionId`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `fk_Messages_Users1`
+  CONSTRAINT `fk_GroupMessages_Users1`
     FOREIGN KEY (`Sender_UserId`)
     REFERENCES `c279`.`Users` (`UserId`)
     ON DELETE NO ACTION

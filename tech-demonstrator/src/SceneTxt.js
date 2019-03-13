@@ -34,9 +34,11 @@ export default class SceneTxt extends React.Component {
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     const geometry = new THREE.BoxGeometry(3, 3, 3)
 
+    // Handlers for dynamic writing
+
     const chatexture = document.createElement('canvas');
     chatexture.height = 256;
-    this.linespacing = chatexture.height/8;
+    this.linespacing = 32;
     chatexture.width = 256;
     const chatdraw = chatexture.getContext('2d');
 
@@ -60,7 +62,27 @@ export default class SceneTxt extends React.Component {
 
     const cube = new THREE.Mesh(geometry, material)
 
+    // To avoid having a bunch of static canvases, have one public temp canvas
+    const tempcanvas = document.createElement('canvas');
+    tempcanvas.height = chatexture.height;
+    tempcanvas.width = chatexture.width;
+    const tempctx = tempcanvas.getContext('2d');
+    // TODO set alpha to false
+    // text conditions for stuff generated on the fly
+    tempctx.font = "24px Helvetica";
+    tempctx.linewidth = 5;
+    tempctx.fillStyle = "rgba(25,25,25,1)";
+    tempctx.fillRect(0, 0, tempcanvas.width, tempcanvas.height);
+    tempctx.fillStyle = "rgba(250,250,250,1)";
+    tempctx.fillText(this.state.txt(), 4, tempcanvas.height/2);
+
+    this.tempcanvas = tempcanvas;
+    this.tempctx = tempctx;
+
+    // add basic elements now
+
     camera.position.z = 8
+    camera.position.y = 6
     scene.add(cube)
     renderer.setClearColor('#000000')
     renderer.setSize(width, height)
@@ -118,15 +140,35 @@ export default class SceneTxt extends React.Component {
 
     // update # objects
     let msgslength = this.state.msgs().length;
+    let newcube = this.cube.clone();
+    
     if (this.state.createdSceneObj.length < msgslength) {
-      // TODO extremely rough. testing only.
-      // we'd actually want a smart detection of placements and text
-      let newcube = this.cube.clone();
-      newcube.position.y = msgslength * 3;
       // VERY IMPORTANT, STATE SETTING IS ASYNC
       this.setState((old) => ({
         createdSceneObj : [...old.createdSceneObj, newcube],
       }), () => {
+        // TODO extremely rough. testing only.
+        // we'd actually want a smart detection of placements and text
+
+        this.tempctx.clearRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
+        this.tempctx.fillStyle = "rgba(25,25,25,1)";
+        this.tempctx.fillRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
+        this.tempctx.fillStyle = "rgba(250,250,250,1)";
+        // TODO temporary, rework textwraap to not be crappy hardcoded
+        let wrapped = this.state.msgs();
+        let space = 0;
+
+        wrapped.forEach(function(line) {
+          // there is no decent built in height field...
+          space += this.linespacing;
+          this.tempctx.fillText(line, 4, space);
+        }.bind(this));
+
+        const texturet = new THREE.TextureLoader().load(this.tempcanvas.toDataURL());
+        const materiattemp = new THREE.MeshBasicMaterial({ map: texturet })
+        
+        newcube.material = materialtemp;
+        newcube.position.y = msgslength * 3;
         this.scene.add(newcube);
         console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
       });

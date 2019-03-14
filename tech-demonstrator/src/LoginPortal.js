@@ -30,10 +30,10 @@ export default class LoginPortal extends React.Component {
     const enc_privkey = nacl.secretbox(keypair.secretKey, enc_privkey_nonce, secret_client_sym_key);
 
     return {
-      'server_auth_key' : server_auth_key,
-      'pubkey' : pubkey,
-      'enc_privkey_nonce' : enc_privkey_nonce,
-      'enc_privkey' : enc_privkey,
+      'server_auth_key' : util.encodeBase64(server_auth_key),
+      'pubkey' : util.encodeBase64(pubkey),
+      'enc_privkey_nonce' : util.encodeBase64(enc_privkey_nonce),
+      'enc_privkey' : util.encodeBase64(enc_privkey),
     }
   }
 
@@ -47,8 +47,24 @@ export default class LoginPortal extends React.Component {
   }
 
 
+  SigninUser() {
+    if ((!this.state.username) || (!this.state.password)) return;
+
+    const server_auth_key = nacl.hash(util.decodeUTF8('server_auth' + this.state.password));
+
+    axios.post(server + "/api/signin/", {
+      username: this.state.username,
+      password: util.encodeBase64(server_auth_key),
+    }).then((response) => {
+      console.log("Success", response);
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
+
   ServerSignup(new_user_data, username) {
-    axios.post(server + "/signup/", {
+    axios.post(server + "/api/signup/", {
       username: username,
       password: new_user_data.server_auth_key,
       pubkey: new_user_data.pubkey,
@@ -56,7 +72,6 @@ export default class LoginPortal extends React.Component {
       enc_privkey_nonce: new_user_data.enc_privkey_nonce,
     }).then((response) => {
       console.log("Success ", response);
-      axios.post(server + "/test/", {});
     }).catch((err) => {
       console.log(err);
     });
@@ -75,6 +90,7 @@ export default class LoginPortal extends React.Component {
         Username<input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'u')}/>
         Password<input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'p')}/>
         <button onClick={() => this.EnrollUser()}>EnrollUser</button>
+        <button onClick={() => this.SigninUser()}>SigninUser</button>
       </div>
     );
   }

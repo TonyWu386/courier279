@@ -8,6 +8,7 @@ const cookie = require('cookie');
 const crypto = require('crypto');
 const mysql = require('mysql');
 const cors = require('cors');
+const atob = require('atob');
 
 
 const corsOptions = {
@@ -70,16 +71,17 @@ app.use(function (req, res, next){
 
 
 /*
-    POST /signin/
+    POST /api/signin/
     Logs an existing user into the webapp
 */
-app.post('/signin/', function (req, res, next) {
+app.post('/api/signin/', function (req, res, next) {
     var username = req.body.username;
     // retrieve user from the database
 
-    conn.query(`SELECT u.UserId, u.Username, c.Password, c.Salt
+    conn.query(`SELECT u.UserId, u.Username, c.Password, c.Salt, c.PubKey, c.EncryptedPrivKey, c.EncryptedPrivKeyNonce
                 FROM Users u
                 INNER JOIN UserCredentials c
+                ON u.UserId = c.Users_UserId
                 WHERE u.Username = ?`,
     [username], (err, rows) => {
         if (err) return res.status(500).end("Internal MySQL Error");
@@ -105,7 +107,13 @@ app.post('/signin/', function (req, res, next) {
             req.session.username = req.body.username;
             req.session.id = user.UserId;
 
-            return res.json("user " + username + " signed in");
+            const user_crypt_info = {
+                'PubKey' : user.PubKey,
+                'EncryptedPrivKey' : user.EncryptedPrivKey,
+                'EncryptedPrivKeyNonce' : user.EncryptedPrivKeyNonce,
+            }
+
+            return res.json(user_crypt_info);
         });
     });
 });
@@ -114,10 +122,10 @@ app.post('/signin/', function (req, res, next) {
 
 
 /*
-    POST /signup/
+    POST /api/signup/
     Creates a new user for the webapp, also logs in automatically
 */
-app.post('/signup/', function (req, res, next) {
+app.post('/api/signup/', function (req, res, next) {
     let username = req.body.username;
     let pubkey = req.body.pubkey;
     let enc_privkey_nonce = req.body.enc_privkey_nonce;
@@ -134,7 +142,7 @@ app.post('/signup/', function (req, res, next) {
 
             conn.query(`INSERT INTO UserCredentials(Users_UserId, Password, Salt, PubKey, EncryptedPrivKey, EncryptedPrivKeyNonce)
                         VALUES (?,?,?,?,?,?)`,
-            [new_userId, passwordDigest, salt, pubkey.toString('base64'), enc_privkey.toString('base64'), enc_privkey_nonce.toString('base64')], (err, rows) => {
+            [new_userId, passwordDigest, salt, pubkey, enc_privkey, enc_privkey_nonce], (err, rows) => {
                 if (err) return res.status(500).end(conn.rollback(() => {}));
 
                 res.setHeader('Set-Cookie', cookie.serialize('username', username, {
@@ -156,7 +164,7 @@ app.post('/signup/', function (req, res, next) {
 
     // SHA-family hashes not recommended anymore for passwords as too fast
     // The slow hash "PBKDF2" is better
-    crypto.pbkdf2(req.body.password.toString('base64'), salt, 100000, 64, 'sha512', function (err, derivedKey) {
+    crypto.pbkdf2(req.body.password, salt, 100000, 64, 'sha512', function (err, derivedKey) {
         if (err) return res.status(500).end(err);
         let passwordDigest = derivedKey.toString('base64');
 

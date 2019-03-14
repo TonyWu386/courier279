@@ -273,6 +273,31 @@ app.get('/api/contacts/', function (req, res, next) {
 });
 
 
+/*  Gets the public key owned by username
+    DELETE /api/crypto/pubkey/?username=foo
+*/
+app.get('/api/crypto/pubkey/', function (req, res, next) {
+    if (req.username == null) return res.status(403).end("Not signed in");
+
+    let owning_username = req.query.username;
+
+    if (!owning_username) return res.status(400).end("Unable to parse username for getting pubkey");
+
+    conn.query(`SELECT c.PubKey FROM UserCredentials c
+                INNER JOIN Users u
+                ON u.UserId = c.Users_UserId
+                WHERE u.Username = ?`,
+    [owning_username], (err, rows) => {
+        if (err) return res.status(500).end("Internal MySQL Error");
+
+        if (!rows) return res.status(400).end("Username doesn't exist");
+
+        return res.json({
+            'pubkey' : rows[0].PubKey
+        });
+    });
+});
+
 
 
 /*  Delete a contact by ContactId

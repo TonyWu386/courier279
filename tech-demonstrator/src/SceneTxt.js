@@ -164,16 +164,16 @@ export default class SceneTxt extends React.Component {
           this.tempctx.fillText(line, 4, space);
         }.bind(this));
 
-        const texturet = new THREE.TextureLoader().load(this.tempcanvas.toDataURL(), function (texture) {
+        new THREE.TextureLoader().load(this.tempcanvas.toDataURL(), function (texture) {
           // only load material if texture is ready
-          texturet.needsUpdate = true;
-          const materiattemp = new THREE.MeshBasicMaterial({ map: texturet });
+          texture.needsUpdate = true;
+          const materiattemp = new THREE.MeshBasicMaterial({ map: texture });
         
           newcube.material = materiattemp;
           newcube.position.y = msgslength * 3;
           this.scene.add(newcube);
           console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
-        }.bind(this), function (err) {
+        }.bind(this), undefined, function (err) {
           console.error("Something bad happened while loading texture!");
         });
         

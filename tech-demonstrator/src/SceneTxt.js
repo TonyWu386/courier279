@@ -155,7 +155,7 @@ export default class SceneTxt extends React.Component {
         this.tempctx.fillRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
         this.tempctx.fillStyle = "rgba(250,250,250,1)";
         // TODO temporary, rework textwraap to not be crappy hardcoded
-        let wrapped = this.state.msgs();
+        let wrapped = this.state.msgs().slice(-1);
         let space = 0;
 
         wrapped.forEach(function(line) {
@@ -164,13 +164,19 @@ export default class SceneTxt extends React.Component {
           this.tempctx.fillText(line, 4, space);
         }.bind(this));
 
-        const texturet = new THREE.TextureLoader().load(this.tempcanvas.toDataURL());
-        const materiattemp = new THREE.MeshBasicMaterial({ map: texturet })
+        const texturet = new THREE.TextureLoader().load(this.tempcanvas.toDataURL(), function (texture) {
+          // only load material if texture is ready
+          texturet.needsUpdate = true;
+          const materiattemp = new THREE.MeshBasicMaterial({ map: texturet });
         
-        newcube.material = materiattemp;
-        newcube.position.y = msgslength * 3;
-        this.scene.add(newcube);
-        console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
+          newcube.material = materiattemp;
+          newcube.position.y = msgslength * 3;
+          this.scene.add(newcube);
+          console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
+        }.bind(this), function (err) {
+          console.error("Something bad happened while loading texture!");
+        });
+        
       });
     }
 

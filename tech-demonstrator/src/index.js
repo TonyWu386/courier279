@@ -5,7 +5,6 @@ import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
 
 
-import SceneController from './SceneController.js';
 import SceneTxtCtrl from './SceneTxtController.js';
 import LoginPortal from './LoginPortal.js';
 
@@ -16,6 +15,8 @@ class PubKeyObj extends React.Component {
     this.state = {
       public_key: null,
       private_key: null,
+      pubkey: null,
+      privkey: null,
     };
   }
 
@@ -56,7 +57,6 @@ class CryptObj extends React.Component {
   handleInputChange(event) {
     this.setState({
       input_value: event.target.value,
-      output_value: this.state.output_value,
     });
   }
 
@@ -67,7 +67,6 @@ class CryptObj extends React.Component {
     const ciphertext = nacl.secretbox(message, nonce, key);
 
     this.setState({
-      input_value: this.state.input_value,
       output_value: util.encodeBase64(ciphertext),
     }, () => {
       this.props.handleCryptResult(this.state.output_value);
@@ -117,20 +116,25 @@ class Webapp extends React.Component {
         squares: squares,
       }]),
       xIsNext: !this.state.xIsNext,
-      cryptResult: this.state.cryptResult,
     });
   }
 
   handleCryptResult(result) {
     this.setState({
-      history: this.state.history,
-      xIsNext: this.state.xIsNext,
       cryptResult: result,
     });
   }
 
   handleSubmit(event){
     event.preventDefault();
+  }
+
+  setCryptData(pubkey, privkey) {
+    this.setState({
+      pubkey: pubkey,
+      privkey: privkey,
+    });
+    console.log("Set crypt info in index.js done");
   }
 
   render() {
@@ -175,7 +179,9 @@ class Webapp extends React.Component {
         <br />
         <div className="login-contain">
           <div className="instructext">Sign in to view messages</div>
-          <LoginPortal/>
+          <LoginPortal
+            setCryptData={(pubkey, privkey) => this.setCryptData(pubkey, privkey)}
+          />
         </div>
         <br />
         <div className="threejs-text">

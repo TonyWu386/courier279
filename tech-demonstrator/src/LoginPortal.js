@@ -56,9 +56,19 @@ export default class LoginPortal extends React.Component {
       username: this.state.username,
       password: util.encodeBase64(server_auth_key),
     }).then((response) => {
-      console.log("Success", response);
+      const pubkey = util.decodeBase64(response.data.PubKey);
+      const enc_privkey = util.decodeBase64(response.data.EncryptedPrivKey);
+      const enc_privkey_nonce = util.decodeBase64(response.data.EncryptedPrivKeyNonce);
+
+      console.log("Signed in and extracted", pubkey, enc_privkey, enc_privkey_nonce);
+
+      const secret_client_sym_key = nacl.hash(util.decodeUTF8('client_sym' + this.state.password)).slice(0, nacl.secretbox.keyLength);
+
+      const privkey = nacl.secretbox.open(enc_privkey, enc_privkey_nonce, secret_client_sym_key);
+
+      this.props.setCryptData(pubkey, privkey);
     }).catch((err) => {
-      console.log(err);
+      console.log("Login failed");
     });
   }
 

@@ -77,7 +77,7 @@ app.post('/api/signin/', function (req, res, next) {
     var username = req.body.username;
     // retrieve user from the database
 
-    conn.query(`SELECT u.UserId, u.Username, c.Password, c.Salt, c.PubKey, c.EncryptedPrivKey, c.EncryptedPrivKeyNonce
+    conn.query(`SELECT u.UserId, u.Username, c.Password, c.Salt, c.PubKey, c.EncryptedPrivKey, c.EncryptedPrivKeyNonce, c.ClientSymKdfSalt
                 FROM Users u
                 INNER JOIN UserCredentials c
                 ON u.UserId = c.Users_UserId
@@ -107,6 +107,7 @@ app.post('/api/signin/', function (req, res, next) {
             req.session.id = user.UserId;
 
             const user_crypt_info = {
+                'ClientSymKdfSalt' : user.ClientSymKdfSalt,
                 'PubKey' : user.PubKey,
                 'EncryptedPrivKey' : user.EncryptedPrivKey,
                 'EncryptedPrivKeyNonce' : user.EncryptedPrivKeyNonce,
@@ -129,9 +130,10 @@ app.post('/api/signup/', function (req, res, next) {
     let pubkey = req.body.pubkey;
     let enc_privkey_nonce = req.body.enc_privkey_nonce;
     let enc_privkey = req.body.enc_privkey;
-    let salt = crypto.randomBytes(16).toString('base64');
+    let client_sym_kdf_salt = req.body.client_sym_kdf_salt;
+    let server_salt = crypto.randomBytes(16).toString('base64');
 
-    if ((!enc_privkey) || (!enc_privkey_nonce) || (!pubkey)) return res.status(400).contentType("text/plain").end("Did not get required crypt data");
+    if ((!enc_privkey) || (!enc_privkey_nonce) || (!pubkey) || (!client_sym_kdf_salt)) return res.status(400).contentType("text/plain").end("Did not get required crypt data");
 
     function create_user_routine(passwordDigest) {
         conn.query('INSERT INTO Users(Username, RealName) VALUES (?,?)', [username, '@TODO Bob'], (err, rows) => {
@@ -139,9 +141,9 @@ app.post('/api/signup/', function (req, res, next) {
 
             new_userId = rows.insertId;
 
-            conn.query(`INSERT INTO UserCredentials(Users_UserId, Password, Salt, PubKey, EncryptedPrivKey, EncryptedPrivKeyNonce)
-                        VALUES (?,?,?,?,?,?)`,
-            [new_userId, passwordDigest, salt, pubkey, enc_privkey, enc_privkey_nonce], (err, rows) => {
+            conn.query(`INSERT INTO UserCredentials(Users_UserId, Password, Salt, PubKey, EncryptedPrivKey, EncryptedPrivKeyNonce, ClientSymKdfSalt)
+                        VALUES (?,?,?,?,?,?,?)`,
+            [new_userId, passwordDigest, server_salt, pubkey, enc_privkey, enc_privkey_nonce, client_sym_kdf_salt], (err, rows) => {
                 if (err) return res.status(500).contentType("text/plain").end(conn.rollback(() => {}));
 
                 res.setHeader('Set-Cookie', cookie.serialize('username', username, {
@@ -163,7 +165,7 @@ app.post('/api/signup/', function (req, res, next) {
 
     // SHA-family hashes not recommended anymore for passwords as too fast
     // The slow hash "PBKDF2" is better
-    crypto.pbkdf2(req.body.password, salt, 100000, 64, 'sha512', function (err, derivedKey) {
+    crypto.pbkdf2(req.body.password, server_salt, 100000, 64, 'sha512', function (err, derivedKey) {
         if (err) return res.status(500).contentType("text/plain").end(err);
         let passwordDigest = derivedKey.toString('base64');
 

@@ -2,6 +2,7 @@ import React from 'react';
 import axios from 'axios';
 import nacl from 'tweetnacl';
 import util from 'tweetnacl-util';
+import scrypt from 'scrypt-async';
 
 // ========== TODO ============ change this for production
 const server = "http://localhost:3000";
@@ -17,24 +18,37 @@ export default class LoginPortal extends React.Component {
   }
 
 
-  setupNewUserCryptData() {
+  setupNewUserCryptData(callback) {
     // Will probably switch to better KDF later, but this will work for creating two mutually independent keys
-    const secret_client_sym_key = nacl.hash(util.decodeUTF8('client_sym' + this.state.password)).slice(0, nacl.secretbox.keyLength);
-    const server_auth_key = nacl.hash(util.decodeUTF8('server_auth' + this.state.password));
+    const client_sym_kdf_salt = nacl.randomBytes(32);
 
-    const keypair = nacl.box.keyPair();
+    scrypt(("client_sym" + this.state.password), client_sym_kdf_salt, {
+            N: 16384,
+            r: 8,
+            p: 1,
+            dkLen: 32,
+            encoding: 'binary'
+    }, (secret_client_sym_key) => {
 
-    const pubkey = keypair.publicKey;
+      console.log(secret_client_sym_key);
 
-    const enc_privkey_nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-    const enc_privkey = nacl.secretbox(keypair.secretKey, enc_privkey_nonce, secret_client_sym_key);
-
-    return {
-      'server_auth_key' : util.encodeBase64(server_auth_key),
-      'pubkey' : util.encodeBase64(pubkey),
-      'enc_privkey_nonce' : util.encodeBase64(enc_privkey_nonce),
-      'enc_privkey' : util.encodeBase64(enc_privkey),
-    }
+      const server_auth_key = nacl.hash(util.decodeUTF8('server_auth' + this.state.password));
+  
+      const keypair = nacl.box.keyPair();
+  
+      const pubkey = keypair.publicKey;
+  
+      const enc_privkey_nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+      const enc_privkey = nacl.secretbox(keypair.secretKey, enc_privkey_nonce, secret_client_sym_key);
+  
+      callback({
+        'client_sym_kdf_salt' : util.encodeBase64(client_sym_kdf_salt),
+        'server_auth_key' : util.encodeBase64(server_auth_key),
+        'pubkey' : util.encodeBase64(pubkey),
+        'enc_privkey_nonce' : util.encodeBase64(enc_privkey_nonce),
+        'enc_privkey' : util.encodeBase64(enc_privkey),
+      });
+    });
   }
 
 
@@ -42,8 +56,9 @@ export default class LoginPortal extends React.Component {
   EnrollUser() {
     if ((!this.state.username) || (!this.state.password)) return;
 
-    const new_user_data = this.setupNewUserCryptData();
-    this.ServerSignup(new_user_data, this.state.username);
+    this.setupNewUserCryptData((new_user_data) => {
+      this.ServerSignup(new_user_data, this.state.username);
+    });
   }
 
 
@@ -59,14 +74,21 @@ export default class LoginPortal extends React.Component {
       const pubkey = util.decodeBase64(response.data.PubKey);
       const enc_privkey = util.decodeBase64(response.data.EncryptedPrivKey);
       const enc_privkey_nonce = util.decodeBase64(response.data.EncryptedPrivKeyNonce);
+      const client_sym_kdf_salt = util.decodeBase64(response.data.ClientSymKdfSalt);
 
       console.log("Signed in and extracted", pubkey, enc_privkey, enc_privkey_nonce);
 
-      const secret_client_sym_key = nacl.hash(util.decodeUTF8('client_sym' + this.state.password)).slice(0, nacl.secretbox.keyLength);
+      scrypt(("client_sym" + this.state.password), client_sym_kdf_salt, {
+        N: 16384,
+        r: 8,
+        p: 1,
+        dkLen: 32,
+        encoding: 'binary'
+      }, (secret_client_sym_key) => {
+        const privkey = nacl.secretbox.open(enc_privkey, enc_privkey_nonce, secret_client_sym_key);
 
-      const privkey = nacl.secretbox.open(enc_privkey, enc_privkey_nonce, secret_client_sym_key);
-
-      this.props.setCryptData(pubkey, privkey);
+        this.props.setCryptData(pubkey, privkey);
+      });
     }).catch((err) => {
       console.log("Login failed");
     });
@@ -80,6 +102,7 @@ export default class LoginPortal extends React.Component {
       pubkey: new_user_data.pubkey,
       enc_privkey: new_user_data.enc_privkey,
       enc_privkey_nonce: new_user_data.enc_privkey_nonce,
+      client_sym_kdf_salt: new_user_data.client_sym_kdf_salt,
     }).then((response) => {
       console.log("Success ", response);
     }).catch((err) => {

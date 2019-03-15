@@ -12,6 +12,8 @@ services:
       MYSQL_DATABASE: c279
       MYSQL_USER: c279-user
       MYSQL_PASSWORD: HCvZT3dlYb
+    volumes:
+      - /dev/shm/c279-mysql:/var/lib/mysql
     networks:
       internal:
         ipv4_address: 10.0.0.4
@@ -27,7 +29,6 @@ services:
       - db
     volumes:
       - ./backend/app.js:/usr/src/app/app.js
-    command: bash -c 'sleep 5; node app.js'
     links:
       - db
     networks:

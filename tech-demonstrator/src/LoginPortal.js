@@ -5,6 +5,8 @@ import util from 'tweetnacl-util';
 import scrypt from 'scrypt-async';
 
 // ========== TODO ============ change this for production
+// ATTENTION change the port to 8888 if using the Nginx reverse proxy
+// const server = "http://localhost:8888";
 const server = "http://localhost:3000";
 
 export default class LoginPortal extends React.Component {

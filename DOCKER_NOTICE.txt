@@ -1,3 +1,8 @@
 If you're using Docker, look for config changes in:
 - the backend's app.js
 - the React app's package.json
+
+If using the Nginx reverse proxy, look for config changes in:
+- the frontend's LoginPortal.js
+
+If using the Nginx reverse proxy, the app should be accessed on port 8888

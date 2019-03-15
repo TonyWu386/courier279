@@ -3,6 +3,24 @@ version: '3.1'
 
 services:
 
+  nginx:
+    build: ./nginx/
+    ports:
+      - 8888:8888
+    depends_on:
+      - node
+      - express
+    #environment:
+      #- NGINX_HOST=localhost
+      #- NGINX_PORT=8888
+    links:
+      - node
+      - express
+    networks:
+      internal:
+        ipv4_address: 10.0.0.5
+
+
   db:
     build: ./database/
     command: mysqld --default-authentication-plugin=mysql_native_password

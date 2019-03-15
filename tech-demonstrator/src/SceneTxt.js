@@ -16,6 +16,7 @@ export default class SceneTxt extends React.Component {
     this.state = {
       txt: this.props.txt,
       msgs: this.props.msgs,
+      movementsIn: this.props.movementsIn,
       createdSceneObj: [],
     }
   }
@@ -34,7 +35,7 @@ export default class SceneTxt extends React.Component {
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     const geometry = new THREE.BoxGeometry(3, 3, 3)
 
-    // Handlers for dynamic writing
+    // == Handlers for dynamic writing ==
 
     const chatexture = document.createElement('canvas');
     chatexture.height = 256;
@@ -79,10 +80,23 @@ export default class SceneTxt extends React.Component {
     this.tempcanvas = tempcanvas;
     this.tempctx = tempctx;
 
+    // == Handlers for the floor ==
+
+    let floor = new THREE.PlaneGeometry(200, 200, 10, 10);
+    let floormaterial = new THREE.MeshBasicMaterial({color: 0xfffaaa});
+    // takes radians
+    floor.rotateX(- Math.PI / 2);
+    floor.translate(0,-8,0);
+    let floormesh = new THREE.Mesh(floor, floormaterial);
+    scene.add(floormesh);
+
+    // Ultra basic camera movements
+
+    
     // add basic elements now
 
     camera.position.z = 8
-    camera.position.y = 6
+    camera.position.y = 2
     scene.add(cube)
     renderer.setClearColor('#000000')
     renderer.setSize(width, height)
@@ -113,7 +127,13 @@ export default class SceneTxt extends React.Component {
   }
 
   animate() {
-    //txt updates
+    // movement updates
+    if (this.state.movementsIn().forward) this.camera.translateZ(-0.1);
+    if (this.state.movementsIn().left) this.camera.translateX(-0.1);
+    if (this.state.movementsIn().backward) this.camera.translateZ(0.1);
+    if (this.state.movementsIn().right) this.camera.translateX(0.1);
+
+    // txt updates
     
     this.canvascontext.clearRect(0, 0, this.canvastxt.width, this.canvastxt.height);
     this.canvascontext.fillStyle = "rgba(250,250,250,1)";
@@ -173,7 +193,7 @@ export default class SceneTxt extends React.Component {
             const materiattemp = new THREE.MeshBasicMaterial({ map: texture });
           
             newcube.material = materiattemp;
-            newcube.position.y = msgslength * 3;
+            newcube.position.z = msgslength * 5;
             this.scene.add(newcube);
             console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
           }.bind(this), undefined, function (err) {

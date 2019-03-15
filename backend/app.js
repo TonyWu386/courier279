@@ -43,12 +43,14 @@ const conn = mysql.createConnection({
     database : 'c279',
 })
 
-conn.connect();
-
-conn.query('SELECT 1 + 1 AS solution', function (err, rows, fields) {
+conn.connect((err) => {
     if (err) throw err;
 
-    console.log('If the DB is working this will show 2: ', rows[0].solution);
+    conn.query('SELECT 1 + 1 AS solution', function (err, rows, fields) {
+        if (err) throw err;
+    
+        console.log('If the DB is working this will show 2: ', rows[0].solution);
+    });
 });
 
 
@@ -385,6 +387,32 @@ app.get('/api/messages/direct/', function (req, res, next) {
                 'SenderUsername' : element.SenderUsername,
                 'ReceiverUsername' : req.Username,
                 'Nonce' : element.Nonce
+            });
+        });
+
+        return res.json(results);
+    });
+});
+
+
+
+
+/*  Gets all the usernames in the system
+    GET /api/users
+*/
+app.get('/api/users/', function (req, res, next) {
+    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
+
+    conn.query(`SELECT Username
+                FROM Users`,
+    [], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+        let results = [];
+
+        rows.forEach(element => {
+            results.push({
+                'Username' : element.Username,
             });
         });
 

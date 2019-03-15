@@ -5,6 +5,9 @@ curl --header 'Content-Type: application/json' --request POST --data '{"username
 curl --header 'Content-Type: application/json' --request POST --data '{"username":"testuserD", "password":"hunter4", "pubkey":"x", "enc_privkey_nonce":"x", "enc_privkey":"x", "client_sym_kdf_salt":"s"}' -c cookiefileD localhost:3001/api/signup/
 curl --header 'Content-Type: application/json' --request POST --data '{"username":"testuserE", "password":"hunter5", "pubkey":"x", "enc_privkey_nonce":"x", "enc_privkey":"x", "client_sym_kdf_salt":"s"}' -c cookiefileE localhost:3001/api/signup/
 
+printf "\n\nTesting getting users...\n"
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/users/
+
 printf "\n\nAdding test contacts...\n"
 curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserA", "target_username":"testuserB", "contact_type":"Friend"}' -b cookiefileA localhost:3001/api/contacts/
 curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserA", "target_username":"testuserC", "contact_type":"Friend"}' -b cookiefileA localhost:3001/api/contacts/

@@ -335,6 +335,9 @@ app.post('/api/messages/direct/', function (req, res, next) {
 
     let target_username = req.body.target_username;
     let encrypted_body = req.body.encrypted_body;
+    let nonce = req.body.nonce;
+
+    if ((!target_username) || (!encrypted_body) || (!nonce)) return res.status(400).contentType("text/plain").end("Did not get required data");
 
     let target_id = null;
     let senderId = req.userId;
@@ -345,8 +348,8 @@ app.post('/api/messages/direct/', function (req, res, next) {
 
         target_id = rows[0].UserId;
 
-        conn.query(`INSERT INTO DirectMessages(Sender_UserId, Receiver_UserId, EncryptedText) VALUES (?,?,?)`,
-        [senderId, target_id, encrypted_body], (err, rows) => {
+        conn.query(`INSERT INTO DirectMessages(Sender_UserId, Receiver_UserId, EncryptedText, Nonce) VALUES (?,?,?,?)`,
+        [senderId, target_id, encrypted_body, nonce], (err, rows) => {
             if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
             return res.json("sent message to " + target_username);
@@ -381,6 +384,7 @@ app.get('/api/messages/direct/', function (req, res, next) {
                 'EncryptedText' : element.EncryptedText,
                 'SenderUsername' : element.SenderUsername,
                 'ReceiverUsername' : req.Username,
+                'Nonce' : element.Nonce
             });
         });
 

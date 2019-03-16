@@ -115,6 +115,8 @@ export default class LoginPortal extends React.Component {
       client_sym_kdf_salt: new_user_data.client_sym_kdf_salt,
     }).then((response) => {
       this.props.signupResponse(response.data + ", Good for you!");
+      // this.state.username should be fine, perhaps we should use response?
+      this.props.loginResponse(true, this.state.username);
       console.log("Success ", response);
     }).catch((err) => {
       if (err.response.status == 409) this.props.loginError("Sorry, but " + err.response.data);

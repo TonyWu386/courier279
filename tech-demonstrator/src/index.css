@@ -50,3 +50,29 @@ ol, ul {
   border-bottom: 1px snow solid;
   align-self: center;
 }
+
+.lock {
+  font: 14px "Century Gothic", Futura, sans-serif;
+  margin-bottom: 20px;
+  align-self: center;
+}
+
+#controls {
+  position: relative;
+	top: 40px;
+  width: 100%;
+	text-align: center;
+	z-index: 100;
+	display:block;
+}
+
+#liveinfo {
+  font: 18px "Century Gothic", Futura, sans-serif;
+  color: rgb(255, 119, 119);
+  position: relative;
+	top: 40px;
+  width: 100%;
+	text-align: center;
+	z-index: 100;
+	display:block;
+}

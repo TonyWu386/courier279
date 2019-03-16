@@ -144,7 +144,6 @@ class Webapp extends React.Component {
       this.setState({
         uname: unameNew,
         staleErr: false,
-        staleFeed: false,
       });
     } else {
       this.setState({
@@ -168,6 +167,12 @@ class Webapp extends React.Component {
       error: errormsg,
       staleErr: true,
     });
+  }
+
+  // Abstract away login details for child components
+  queryLoginStatus() {
+    // If there are any additional checks for being logged in, they go here.
+    return this.state.uname !== '';
   }
 
   setCryptData(pubkey, privkey) {
@@ -208,7 +213,9 @@ class Webapp extends React.Component {
         </div>
         <br />
         <div className="threejs-text">
-            <SceneTxtCtrl/>
+            <SceneTxtCtrl
+              isUserLogin={() => this.queryLoginStatus()}
+            />
         </div>
       </div>
     );

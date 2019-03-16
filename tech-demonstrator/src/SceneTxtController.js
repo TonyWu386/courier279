@@ -18,6 +18,8 @@ export default class SceneTxtController extends React.Component {
       movements: {forward: false, backward: false, right: false, left: false},
       isCameraLocked: false,
       hasBeenChanged: false, // currently unused. Will want later
+      staleLiveInfo: false,
+      liveInfo: '',
     }
   }
 
@@ -40,12 +42,25 @@ export default class SceneTxtController extends React.Component {
   }
 
   handleAdd(e) {
-    // be very careful with immutability
-    this.setState((old) => ({
-      existingMsg : [...old.existingMsg, old.txt],
-    }), () => {
-      console.log('says ', this.state.existingMsg);
-    });
+    // Basic frontend check that non-auth users can't do anything
+    if (this.props.isUserLogin()) {
+
+      // be very careful with immutability
+      this.setState((old) => ({
+        staleLiveInfo: true,
+        liveInfo: "Message Sent...",
+        existingMsg : [...old.existingMsg, old.txt],
+      }), () => {
+        // TODO handle pushing the new MSG to db by calling the helper below
+        // this.pushUserMessage();
+        console.log('says ', this.state.existingMsg);
+      });
+    } else {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "You must be logged in to send messages",
+      })
+    }
   }
 
   handleLock(event) {
@@ -120,6 +135,22 @@ export default class SceneTxtController extends React.Component {
     }
   }
 
+  fetchUserMessages() {
+    // TODO corresponds to backend GET for this user
+    // grab the messages
+    // Unencrypt them with the relevant keys (which should be passed down)
+    // and store the result inside of this.state.existingMsg so they can be drawn
+  }
+
+  pushUserMessage() {
+    // TODO corresponds to backend POST for this user
+    // convert the message to a form the backend understands
+    // needs a target_username field... need a UI elem for this still...
+    // encrypt the message before sending
+  }
+
+  
+
   queryMsg() {
     return this.state.existingMsg
   }
@@ -135,11 +166,15 @@ export default class SceneTxtController extends React.Component {
   render() {
     return (
       <div>
-        <input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
+        <input id="content-msg" type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
+        <input id="target-msg" type="text" value={this.state.value}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
         <div class="lock">Camera is currently {this.state.isCameraLocked ? 
-          'locked - typing will not move the camera' : 'unlocked - you can move in the world'}</div>
+          'LOCKED - typing will not move the camera' : 'UNLOCKED - you can move in the world'}</div>
+        <div id="controls">WASD to move. Use the Toggle Camera Locking button when you want to type</div>
+        <div id="liveinfo">{this.state.staleLiveInfo ? this.state.liveInfo 
+          : 'Send messages to known usernames using the box at the top.'}</div>
         <SceneTxt 
           txt={() => this.queryTxt()}
           msgs={() => this.queryMsg()}

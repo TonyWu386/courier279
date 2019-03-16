@@ -13,6 +13,9 @@ export default class LoginPortal extends React.Component {
   constructor(props) {
     super(props)
 
+    // Properties should include
+
+
     this.state = {
       username : null,
       password : null,
@@ -90,9 +93,14 @@ export default class LoginPortal extends React.Component {
         const privkey = nacl.secretbox.open(enc_privkey, enc_privkey_nonce, secret_client_sym_key);
 
         this.props.setCryptData(pubkey, privkey);
+        // this.state.username should be fine, perhaps we should use response?
+        this.props.loginResponse(true, this.state.username);
       });
     }).catch((err) => {
-      console.log("Login failed");
+      if (err.response.status == 401) this.props.loginError(err.response.data +
+         ". Please enter credentials again");
+      else this.props.loginError("MySQL server had an accident: " + err.response.data);
+      console.log(err);
     });
   }
 
@@ -106,8 +114,11 @@ export default class LoginPortal extends React.Component {
       enc_privkey_nonce: new_user_data.enc_privkey_nonce,
       client_sym_kdf_salt: new_user_data.client_sym_kdf_salt,
     }).then((response) => {
+      this.props.signupResponse(response.data + ", Good for you!");
       console.log("Success ", response);
     }).catch((err) => {
+      if (err.response.status == 409) this.props.loginError("Sorry, but " + err.response.data);
+      else this.props.loginError("MySQL server had an accident: " + err.response.data);
       console.log(err);
     });
   }

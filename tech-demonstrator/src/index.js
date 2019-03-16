@@ -102,6 +102,14 @@ class Webapp extends React.Component {
       }],
       xIsNext: true,
       cryptResult: '',
+      // the below are actually used, can the above be deleted???
+      pubkey: null,
+      privkey: null,
+      uname: '',
+      error: '',
+      staleErr: false,
+      feedback: '',
+      staleFeed: false,
     };
   }
 
@@ -129,6 +137,39 @@ class Webapp extends React.Component {
     event.preventDefault();
   }
 
+  // The below are funcs passed to login for communicating with us
+
+  handleLoginResponse(loginState, unameNew) {
+    if (loginState) {
+      this.setState({
+        uname: unameNew,
+        staleErr: false,
+        staleFeed: false,
+      });
+    } else {
+      this.setState({
+        uname: '',
+        staleErr: false,
+        staleFeed: false,
+      });
+    }
+  }
+
+  handleSignupFeedback(feedbackmsg) {
+    this.setState({
+      feedback: feedbackmsg,
+      staleFeed: true,
+      staleErr: false,
+    });
+  }
+
+  handleLoginErr(errormsg) {
+    this.setState({
+      error: errormsg,
+      staleErr: true,
+    });
+  }
+
   setCryptData(pubkey, privkey) {
     this.setState({
       pubkey: pubkey,
@@ -143,45 +184,27 @@ class Webapp extends React.Component {
     const keypair = nacl.box.keyPair();
     console.log(keypair);
 
-    const moves = history.map((step, move) => {
-      const desc = move ?
-        'Go to move #' + move :
-        'Go to game start';
-      return (
-        <li>
-          <button onClick={() => this.jumpTo(move)}>{desc}</button>
-        </li>
-      );
-    });
-
-    let status;
-
-    let cryptResult = this.state.cryptResult;
-
     return (
       <div className="contain-all">
-        <div className="game">
-          <div className="crypt-obj">
-            <CryptObj
-              password="abcdef"
-              handleCryptResult={(result) => this.handleCryptResult(result)}
-            />
-          </div>
-          <div className="pubkey-obj">
-            <PubKeyObj/>
-          </div>
-          <h4>Outside Crypt Result: {cryptResult}</h4>
-          <div className="game-info">
-            <div>{status}</div>
-            <ol>{moves}</ol>
-          </div>
-        </div>
+        <div class="signup-feedback">{this.state.staleFeed ? 
+            this.state.feedback : 
+            'Hi! Signup or Login to send and recieve'}</div>
+        <div class="login-status">You currently are {this.state.uname === '' ? 
+            'Not Logged In - You won\'t be able to send or recieve anything' : 
+            'Logged in as ' + this.state.uname}</div>
         <br />
         <div className="login-contain">
           <div className="instructext">Sign in to view messages</div>
           <LoginPortal
             setCryptData={(pubkey, privkey) => this.setCryptData(pubkey, privkey)}
+            loginResponse={(loginState, unameNew) => this.handleLoginResponse(loginState, unameNew) }
+            loginError={(errmsg) => this.handleLoginErr(errmsg)}
+            signupResponse={(feedmsg) => this.handleSignupFeedback(feedmsg)}
           />
+          <br />
+          <div class="login-error">{this.state.staleErr ? 
+          this.state.error : 
+          ''}</div>
         </div>
         <br />
         <div className="threejs-text">

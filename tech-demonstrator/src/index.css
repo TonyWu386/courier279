@@ -9,6 +9,18 @@ ol, ul {
   padding-left: 30px;
 }
 
+.login-error {
+  font: 18px "Century Gothic", Futura, sans-serif;
+  color: rgb(255, 119, 119);
+  margin: 10px;
+}
+
+.login-status {
+  font: 20px "Century Gothic", Futura, sans-serif;
+  color: rgb(255, 255, 255);
+  margin: 30px;
+}
+
 .contain-all {
   display: flex;
   flex-direction: column;

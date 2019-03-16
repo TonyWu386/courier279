@@ -9,6 +9,13 @@ ol, ul {
   padding-left: 30px;
 }
 
+.btn {
+  margin: 5px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 2px #47474d solid;
+}
+
 .login-error {
   font: 18px "Century Gothic", Futura, sans-serif;
   color: rgb(255, 119, 119);

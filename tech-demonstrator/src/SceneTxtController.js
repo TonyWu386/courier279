@@ -55,52 +55,68 @@ export default class SceneTxtController extends React.Component {
       isCameraLocked : (old.isCameraLocked ^ 1) === 1,
     }), () => {
       console.log('Camera Locked ', this.state.isCameraLocked);
+      // if locked while moving, the camera can get stuck. prevent that here.
+      if (this.state.isCameraLocked) {
+        let temp = {...this.state.movements};
+        temp.forward = false;
+        temp.left = false;
+        temp.backward = false;
+        temp.right = false;
+        this.setState({
+          movements : temp,
+        });
+      }
+
     });
   }
 
   handleKeyDown(event) {
-    let temp = {...this.state.movements};
-    switch(event.key) {
-      case 'w': 
-                temp.forward = true;
-                this.setState({movements : temp,}, () => {console.log('W down');}); break;
+    if (!this.state.isCameraLocked) {
+      let temp = {...this.state.movements};
+      switch(event.key) {
+        case 'w': 
+                  temp.forward = true;
+                  this.setState({movements : temp,}, () => {console.log('W down');}); break;
 
-      case 'a': 
-                temp.left = true;
-                this.setState({movements : temp,}, () => {console.log('A down');}); break;
+        case 'a': 
+                  temp.left = true;
+                  this.setState({movements : temp,}, () => {console.log('A down');}); break;
 
-      case 's': 
-                temp.backward = true;
-                this.setState({movements : temp,}, () => {console.log('S down');}); break;
+        case 's': 
+                  temp.backward = true;
+                  this.setState({movements : temp,}, () => {console.log('S down');}); break;
 
-      case 'd': 
-                temp.right = true;
-                this.setState({movements : temp,}, () => {console.log('D down');}); break;
+        case 'd': 
+                  temp.right = true;
+                  this.setState({movements : temp,}, () => {console.log('D down');}); break;
 
-      default:
+        default:
+      }
     }
   }
 
   handleKeyUp(event) {
-    let temp = {...this.state.movements};
-    switch(event.key) {
-      case 'w': 
-                temp.forward = false;
-                this.setState({movements : temp,}, () => {console.log('W up');}); break;
+    if (!this.state.isCameraLocked) {
+      let temp = {...this.state.movements};
+      switch(event.key) {
+        case 'w': 
+                  temp.forward = false;
+                  this.setState({movements : temp,}, () => {console.log('W up');}); break;
 
-      case 'a': 
-                temp.left = false;
-                this.setState({movements : temp,}, () => {console.log('A up');}); break;
+        case 'a': 
+                  temp.left = false;
+                  this.setState({movements : temp,}, () => {console.log('A up');}); break;
 
-      case 's': 
-                temp.backward = false;
-                this.setState({movements : temp,}, () => {console.log('S up');}); break;
+        case 's': 
+                  temp.backward = false;
+                  this.setState({movements : temp,}, () => {console.log('S up');}); break;
 
-      case 'd': 
-                temp.right = false;
-                this.setState({movements : temp,}, () => {console.log('D up');}); break;
+        case 'd': 
+                  temp.right = false;
+                  this.setState({movements : temp,}, () => {console.log('D up');}); break;
 
-      default:
+        default:
+      }
     }
   }
 

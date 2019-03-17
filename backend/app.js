@@ -106,7 +106,7 @@ app.post('/api/signin/', function (req, res, next) {
             }));
 
             req.session.username = req.body.username;
-            req.session.id = user.UserId;
+            req.session.userId = user.UserId;
 
             const user_crypt_info = {
                 'ClientSymKdfSalt' : user.ClientSymKdfSalt,
@@ -277,7 +277,7 @@ app.get('/api/contacts/', function (req, res, next) {
 
 
 /*  Gets the public key owned by username
-    DELETE /api/crypto/pubkey/?username=foo
+    GET /api/crypto/pubkey/?username=foo
 */
 app.get('/api/crypto/pubkey/', function (req, res, next) {
     if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
@@ -296,7 +296,7 @@ app.get('/api/crypto/pubkey/', function (req, res, next) {
         if (!rows) return res.status(400).contentType("text/plain").end("Username doesn't exist");
 
         return res.json({
-            'pubkey' : rows[0].PubKey
+            'pubkey' : rows[0].PubKey,
         });
     });
 });

@@ -1,5 +1,7 @@
 import React from 'react';
 import axios from 'axios';
+import nacl from 'tweetnacl';
+import util from 'tweetnacl-util';
 import './index.css';
 
 
@@ -153,7 +155,7 @@ export default class SceneTxtController extends React.Component {
   fetchUserMessages() {
     // corresponds to backend GET for this user
     // TODO engineer this to be able to get message from a specific user
-    axios.get(server + "/api/messages/direct/?sender=" + this.props.getUserName())
+    axios.get(server + "/api/messages/direct/?from=" + this.props.getUserName())
       .then((response) => {
         // grab the messages
         // Unencrypt them with the relevant keys (which should be passed down)
@@ -168,11 +170,19 @@ export default class SceneTxtController extends React.Component {
   pushUserMessage() {
     //  corresponds to backend POST for this user
     // convert the message to a form the backend understands
-    axios.post(server + "/api/messages/direct", {
-      // TODO encrypt the message before sending
-      encrypted_body: this.state.txt,
-      nonce: "Change this please",
-      target_username: this.state.target,
+
+    axios.get(server + "/api/crypto/pubkey/?username=" + this.state.target)
+    .then((response) => {
+      let target_pubkey = util.decodeBase64(response.data.pubkey);
+      let message_nonce = nacl.randomBytes(nacl.box.nonceLength);
+
+      let encrypted_message = nacl.box(util.decodeUTF8(this.state.txt), message_nonce, target_pubkey, this.props.getUserPrivKey());
+
+      return axios.post(server + "/api/messages/direct/", {
+        encrypted_body: util.encodeBase64(encrypted_message),
+        nonce: util.encodeBase64(message_nonce),
+        target_username: this.state.target,
+      });
     }).then((res) => {
       this.setState({
         staleLiveInfo: true,
@@ -181,11 +191,11 @@ export default class SceneTxtController extends React.Component {
     }).catch((err) => {
       this.setState({
         staleLiveInfo: true,
-        liveInfo: "Send failure: "  + err.response.data,
+        liveInfo: "Send failure: "  + (err.response.data || err.response || err),
       });
       console.log(err);
     });
-    
+
   }
 
   

@@ -175,6 +175,10 @@ class Webapp extends React.Component {
     return this.state.uname !== '';
   }
 
+  queryLoginName() {
+    return this.state.uname;
+  }
+
   // get user public key, is null if no logged in user
   queryUserPubKey() {
     return this.state.pubkey;
@@ -227,6 +231,7 @@ class Webapp extends React.Component {
               isUserLogin={() => this.queryLoginStatus()}
               getUserPubKey={() => this.queryUserPubKey()}
               getUserPrivKey={() => this.queryUserPrivKey()}
+              getUserName={() => this.queryLoginName()}
             />
         </div>
       </div>

@@ -151,10 +151,18 @@ export default class SceneTxtController extends React.Component {
   }
 
   fetchUserMessages() {
-    //  corresponds to backend GET for this user
-    // grab the messages
-    // Unencrypt them with the relevant keys (which should be passed down)
-    // and store the result inside of this.state.existingMsg so they can be drawn
+    // corresponds to backend GET for this user
+    // TODO engineer this to be able to get message from a specific user
+    axios.get(server + "/api/messages/direct/?sender=" + this.props.getUserName())
+      .then((response) => {
+        // grab the messages
+        // Unencrypt them with the relevant keys (which should be passed down)
+        // and store the result so they can be drawn
+        console.log("Got following direct messages from DB" + response.data);
+      }).catch((err) => {
+        console.log("Messed up while getting user msgs " + err.response.data);
+      });
+    
   }
 
   pushUserMessage() {
@@ -201,7 +209,7 @@ export default class SceneTxtController extends React.Component {
         <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
-        <button class="btn" id="force" onClick={() => this.fetchUserMessages()}>DEV ONLY - Force Message Refresh</button>
+        <button class="btn" id="force" onClick={() => this.fetchUserMessages()}>DEV ONLY - Force Self Message Check - See console</button>
         <div class="lock">Camera is currently {this.state.isCameraLocked ? 
           'LOCKED - typing will not move the camera' : 'UNLOCKED - you can move in the world'}</div>
         <div id="controls">WASD to move. Use the Toggle Camera Locking button when you want to type</div>

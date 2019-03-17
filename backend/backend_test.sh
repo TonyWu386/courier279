@@ -32,6 +32,12 @@ printf "\n\nTesting sending messages...\n"
 curl --header 'Content-Type: application/json' --request POST --data '{"target_username":"testuserB", "encrypted_body":"x", "nonce":"n"}' -b cookiefileA localhost:3001/api/messages/direct/
 
 printf "\n\nTesting getting messages...\n"
-curl --header 'Content-Type: application/json' -b cookiefileB localhost:3001/api/messages/direct/?sender=testuserA
+curl --header 'Content-Type: application/json' -b cookiefileB localhost:3001/api/messages/direct/?from=testuserA
+printf "\n"
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/messages/direct/?to=testuserB
+printf "\n"
+curl --header 'Content-Type: application/json' --request POST --data '{"target_username":"testuserA", "encrypted_body":"x2", "nonce":"n2"}' -b cookiefileB localhost:3001/api/messages/direct/
+printf "\n"
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/messages/direct/?toandfrom=testuserB
 
 printf "\nDone\n"

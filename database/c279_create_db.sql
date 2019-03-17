@@ -178,12 +178,13 @@ ENGINE = InnoDB;
 -- Table `c279`.`Files`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Files` (
-  `fileId` INT NOT NULL AUTO_INCREMENT,
-  `fileName` VARCHAR(100) NOT NULL,
-  `encryptedFileData` TEXT NOT NULL,
-  `encryptedEncryptionHeader` VARCHAR(64) NOT NULL,
+  `FileId` INT NOT NULL AUTO_INCREMENT,
+  `FileName` VARCHAR(100) NOT NULL,
+  `EncryptedFileData` TEXT NOT NULL,
+  `Nonce` VARCHAR(88) NOT NULL,
+  `OwnerEncryptedHeader` VARCHAR(64) NOT NULL,
   `FileOwner_UserId` INT NOT NULL,
-  PRIMARY KEY (`fileId`),
+  PRIMARY KEY (`FileId`),
   INDEX `fk_Files_Users1_idx` (`FileOwner_UserId` ASC),
   CONSTRAINT `fk_Files_Users1`
     FOREIGN KEY (`FileOwner_UserId`)
@@ -197,18 +198,18 @@ ENGINE = InnoDB;
 -- Table `c279`.`FileEncryptionHeaderStore`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`FileEncryptionHeaderStore` (
-  `headerId` INT NOT NULL AUTO_INCREMENT,
-  `Files_fileId` INT NOT NULL,
+  `HeaderId` INT NOT NULL AUTO_INCREMENT,
+  `Files_FileId` INT NOT NULL,
   `Sharer_UserId` INT NOT NULL,
   `Sharee_UserId` INT NOT NULL,
   `encryptedEncryptionHeader` VARCHAR(88) NOT NULL,
-  PRIMARY KEY (`headerId`),
-  INDEX `fk_FileEncryptionHeaderStore_Files1_idx` (`Files_fileId` ASC),
+  PRIMARY KEY (`HeaderId`),
+  INDEX `fk_FileEncryptionHeaderStore_Files1_idx` (`Files_FileId` ASC),
   INDEX `fk_FileEncryptionHeaderStore_Users1_idx` (`Sharer_UserId` ASC),
   INDEX `fk_FileEncryptionHeaderStore_Users2_idx` (`Sharee_UserId` ASC),
   CONSTRAINT `fk_FileEncryptionHeaderStore_Files1`
-    FOREIGN KEY (`Files_fileId`)
-    REFERENCES `c279`.`Files` (`fileId`)
+    FOREIGN KEY (`Files_FileId`)
+    REFERENCES `c279`.`Files` (`FileId`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_FileEncryptionHeaderStore_Users1`

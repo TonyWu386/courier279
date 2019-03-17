@@ -360,22 +360,62 @@ app.post('/api/messages/direct/', function (req, res, next) {
 });
 
 
-/*  For getting direct messages sent by a username, received by the logged-in user
-    GET /api/messages/direct/?sender=foo
+/*  For getting direct messages sent from a username, to the logged-in user
+    GET /api/messages/direct/?from=foo
+
+    For getting direct messages sent to a username, sent by the logged-in user
+    GET /api/messages/direct/?to=foo
+
+    For getting all back-and-forth direct messages between 2 users
+    GET /api/messages/direct/?toandfrom=foo
 */
 app.get('/api/messages/direct/', function (req, res, next) {
     if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
 
-    let sending_username = req.query.sender;
+    let from_username = req.query.from;
+    let to_username = req.query.to;
+    let toandfrom_username = req.query.toandfrom;
 
-    if (!sending_username) return res.status(400).contentType("text/plain").end("Unable to parse username for getting messages");
+    if (toandfrom_username) {
+        if ((from_username) || (to_username)) return res.status(400).contentType("text/plain").end("Incompatible combination of args");
 
-    conn.query(`SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername
-                FROM DirectMessages m
-                INNER JOIN Users u
-                ON m.Sender_UserId = u.UserId
-                WHERE m.Receiver_UserId = ? AND m.Sender_UserId IN (SELECT UserId FROM Users WHERE Username = ?)`,
-    [req.userId, sending_username], (err, rows) => {
+        from_username = toandfrom_username;
+        to_username = toandfrom_username;
+    } else if (from_username && to_username) {
+        return res.status(400).contentType("text/plain").end("Incompatible combination of args");
+    } else if ((!from_username) && (!to_username)) {
+        return res.status(400).contentType("text/plain").end("Unable to parse username for getting messages");
+    }
+
+    let query = null;
+    let args = null;
+
+    if (toandfrom_username) {
+        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername
+        FROM DirectMessages m
+        INNER JOIN Users u
+        ON m.Sender_UserId = u.UserId
+        WHERE (m.Receiver_UserId = ? AND m.Sender_UserId IN (SELECT UserId FROM Users WHERE Username = ?))
+        OR (m.Receiver_UserId IN (SELECT UserId FROM Users WHERE Username = ?) AND m.Sender_UserId = ?)`;
+        args = [req.userId, from_username, to_username, req.userId]
+    } else if (to_username) {
+        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername
+        FROM DirectMessages m
+        INNER JOIN Users u
+        ON m.Sender_UserId = u.UserId
+        WHERE m.Receiver_UserId IN (SELECT UserId FROM Users WHERE Username = ?) AND m.Sender_UserId = ?`;
+        args = [to_username, req.userId];
+    } else {
+        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername
+        FROM DirectMessages m
+        INNER JOIN Users u
+        ON m.Sender_UserId = u.UserId
+        WHERE m.Receiver_UserId = ? AND m.Sender_UserId IN (SELECT UserId FROM Users WHERE Username = ?)`;
+        args = [req.userId, from_username];
+    }
+
+
+    conn.query(query, args, (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
         let results = [];

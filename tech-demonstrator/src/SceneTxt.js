@@ -162,6 +162,7 @@ export default class SceneTxt extends React.Component {
     let msgslength = this.state.msgs().length;
     let newcube = this.cube.clone();
     
+    // TODO thisisterrible.jpg, we want something like a stale state
     if (this.state.createdSceneObj.length < msgslength) {
       // VERY IMPORTANT, STATE SETTING IS ASYNC
       this.setState((old) => ({

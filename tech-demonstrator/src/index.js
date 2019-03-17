@@ -175,6 +175,16 @@ class Webapp extends React.Component {
     return this.state.uname !== '';
   }
 
+  // get user public key, is null if no logged in user
+  queryUserPubKey() {
+    return this.state.pubkey;
+  }
+
+  // get user private key, is null if no logged in user
+  queryUserPrivKey() {
+    return this.state.privkey;
+  }
+
   setCryptData(pubkey, privkey) {
     this.setState({
       pubkey: pubkey,
@@ -215,6 +225,8 @@ class Webapp extends React.Component {
         <div className="threejs-text">
             <SceneTxtCtrl
               isUserLogin={() => this.queryLoginStatus()}
+              getUserPubKey={() => this.queryUserPubKey()}
+              getUserPrivKey={() => this.queryUserPrivKey()}
             />
         </div>
       </div>

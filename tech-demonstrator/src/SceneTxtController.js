@@ -1,19 +1,28 @@
 import React from 'react';
+import axios from 'axios';
 import './index.css';
 
 
 import SceneTxt from './SceneTxt.js';
+
+// ========== TODO ============ change this for production
+// ATTENTION change the port to 8888 if using the Nginx reverse proxy
+// const server = "http://localhost:8888";
+const server = "http://localhost:3000";
 
 
 export default class SceneTxtController extends React.Component {
   constructor(props) {
     super(props)
 
+    this.pushUserMessage = this.pushUserMessage.bind(this);
+
     this.handleKeyD = this.handleKeyDown.bind(this);
     this.handleKeyU = this.handleKeyUp.bind(this);
 
     this.state = {
-      txt: "Text goes here",
+      txt: '',
+      target: '',
       existingMsg: [],
       movements: {forward: false, backward: false, right: false, left: false},
       isCameraLocked: false,
@@ -41,25 +50,31 @@ export default class SceneTxtController extends React.Component {
     });
   }
 
+  handleContactChange(event) {
+    this.setState({
+      target : event.target.value,
+    }, () => {
+      console.log('target is ', this.state.target);
+    });
+  }
+
   handleAdd(e) {
     // Basic frontend check that non-auth users can't do anything
     if (this.props.isUserLogin()) {
-
+      // TODO this entire section is a mess and needs a rework
       // be very careful with immutability
       this.setState((old) => ({
-        staleLiveInfo: true,
-        liveInfo: "Message Sent...",
         existingMsg : [...old.existingMsg, old.txt],
       }), () => {
-        // TODO handle pushing the new MSG to db by calling the helper below
-        // this.pushUserMessage();
+        // handle pushing the new MSG to db by calling the helper below
+        this.pushUserMessage();
         console.log('says ', this.state.existingMsg);
       });
     } else {
       this.setState({
         staleLiveInfo: true,
         liveInfo: "You must be logged in to send messages",
-      })
+      });
     }
   }
 
@@ -136,17 +151,33 @@ export default class SceneTxtController extends React.Component {
   }
 
   fetchUserMessages() {
-    // TODO corresponds to backend GET for this user
+    //  corresponds to backend GET for this user
     // grab the messages
     // Unencrypt them with the relevant keys (which should be passed down)
     // and store the result inside of this.state.existingMsg so they can be drawn
   }
 
   pushUserMessage() {
-    // TODO corresponds to backend POST for this user
+    //  corresponds to backend POST for this user
     // convert the message to a form the backend understands
-    // needs a target_username field... need a UI elem for this still...
-    // encrypt the message before sending
+    axios.post(server + "/api/messages/direct", {
+      // TODO encrypt the message before sending
+      encrypted_body: this.state.txt,
+      nonce: "Change this please",
+      target_username: this.state.target,
+    }).then((res) => {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Success: "  + res.data,
+      });
+    }).catch((err) => {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Send failure: "  + err.response.data,
+      });
+      console.log(err);
+    });
+    
   }
 
   
@@ -167,9 +198,10 @@ export default class SceneTxtController extends React.Component {
     return (
       <div>
         <input id="content-msg" type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
-        <input id="target-msg" type="text" value={this.state.value}/>
+        <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
+        <button class="btn" id="force" onClick={() => this.fetchUserMessages()}>DEV ONLY - Force Message Refresh</button>
         <div class="lock">Camera is currently {this.state.isCameraLocked ? 
           'LOCKED - typing will not move the camera' : 'UNLOCKED - you can move in the world'}</div>
         <div id="controls">WASD to move. Use the Toggle Camera Locking button when you want to type</div>

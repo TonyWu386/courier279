@@ -406,7 +406,7 @@ app.get('/api/messages/direct/', function (req, res, next) {
         WHERE m.Receiver_UserId IN (SELECT UserId FROM Users WHERE Username = ?) AND m.Sender_UserId = ?`;
         args = [to_username, req.userId];
     } else {
-        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername
+        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername, m.Nonce
         FROM DirectMessages m
         INNER JOIN Users u
         ON m.Sender_UserId = u.UserId
@@ -425,7 +425,7 @@ app.get('/api/messages/direct/', function (req, res, next) {
                 'DirectMessageId' : element.DirectMessageId,
                 'EncryptedText' : element.EncryptedText,
                 'SenderUsername' : element.SenderUsername,
-                'ReceiverUsername' : req.Username,
+                'ReceiverUsername' : req.username,
                 'Nonce' : element.Nonce
             });
         });

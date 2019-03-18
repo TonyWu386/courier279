@@ -31,6 +31,7 @@ export default class SceneTxtController extends React.Component {
       hasBeenChanged: false, // currently unused. Will want later
       staleLiveInfo: false,
       liveInfo: '',
+      testgotmsg: '',
     }
   }
 
@@ -155,11 +156,24 @@ export default class SceneTxtController extends React.Component {
   fetchUserMessages() {
     // corresponds to backend GET for this user
     // TODO engineer this to be able to get message from a specific user
-    axios.get(server + "/api/messages/direct/?from=" + this.props.getUserName())
+    axios.get(server + "/api/messages/direct/?from=" + this.state.target)
       .then((response) => {
         // grab the messages
         // Unencrypt them with the relevant keys (which should be passed down)
         // and store the result so they can be drawn
+        let msg_str = '';
+        response.data.forEach(msg => {
+          msg_str += "ID " + msg.DirectMessageId;
+          msg_str += " :Encrypted text " + msg.EncryptedText;
+          msg_str += " :Sender " + msg.SenderUsername;
+          msg_str += " :Target " + msg.ReceiverUsername;
+          msg_str += " :Nonce " + msg.Nonce;
+        });
+
+        this.setState({
+          testgotmsg: msg_str,
+        });
+
         console.log("Got following direct messages from DB" + response.data);
       }).catch((err) => {
         console.log("Messed up while getting user msgs " + err.response.data);
@@ -221,7 +235,8 @@ export default class SceneTxtController extends React.Component {
         <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
-        <button class="btn" id="force" onClick={() => this.fetchUserMessages()}>DEV ONLY - Force Self Message Check - See console</button>
+        <button class="btn" id="force" onClick={() => this.fetchUserMessages()}>DEV ONLY - Force Self Message Check and Show</button>
+        <div id="show-msg">{this.state.testgotmsg}</div>
         <div class="lock">Camera is currently {this.state.isCameraLocked ? 
           'LOCKED - typing will not move the camera' : 'UNLOCKED - you can move in the world'}</div>
         <div id="controls">WASD to move. Use the Toggle Camera Locking button when you want to type</div>

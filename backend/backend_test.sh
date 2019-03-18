@@ -40,4 +40,6 @@ curl --header 'Content-Type: application/json' --request POST --data '{"target_u
 printf "\n"
 curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/messages/direct/?toandfrom=testuserB
 
+printf "\n\nTesting group messages...\n"
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n"}' -b cookiefileA localhost:3001/api/messages/group/session/
 printf "\nDone\n"

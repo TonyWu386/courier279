@@ -139,14 +139,20 @@ app.post('/api/signup/', function (req, res, next) {
 
     function create_user_routine(passwordDigest) {
         conn.query('INSERT INTO Users(Username, RealName) VALUES (?,?)', [username, '@TODO Bob'], (err, rows) => {
-            if (err) return res.status(500).contentType("text/plain").end(conn.rollback(() => {}));
+            if (err) {
+                conn.rollback(() => {});
+                return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+            }
 
             new_userId = rows.insertId;
 
             conn.query(`INSERT INTO UserCredentials(Users_UserId, Password, Salt, PubKey, EncryptedPrivKey, EncryptedPrivKeyNonce, ClientSymKdfSalt)
                         VALUES (?,?,?,?,?,?,?)`,
             [new_userId, passwordDigest, server_salt, pubkey, enc_privkey, enc_privkey_nonce, client_sym_kdf_salt], (err, rows) => {
-                if (err) return res.status(500).contentType("text/plain").end(conn.rollback(() => {}));
+                if (err) {
+                    conn.rollback(() => {});
+                    return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+                }
 
                 res.setHeader('Set-Cookie', cookie.serialize('username', username, {
                     path : '/', 
@@ -457,6 +463,50 @@ app.get('/api/users/', function (req, res, next) {
         });
 
         return res.json(results);
+    });
+});
+
+
+
+/*  For starting a new group message session
+    Calling user becomes the owner of the session
+    POST /api/messages/group/session/
+*/
+app.post('/api/messages/group/session/', function (req, res, next) {
+    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
+
+    let encrypted_session_key = req.body.encrypted_session_key;
+    let nonce = req.body.nonce;
+
+    if ((!encrypted_session_key) || (!nonce)) return res.status(400).contentType("text/plain").end("Did not get required data");
+
+    conn.beginTransaction((err) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+        conn.query(`INSERT INTO Sessions(SessionType) VALUES (?)`, ['group'], (err, rows) => {
+            if (err) {
+                conn.rollback(() => {});
+                return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+            }
+
+            const sessionId = rows.insertId;
+
+            conn.query(`INSERT INTO UserToSession(Sessions_SessionId, Users_UserId, EncryptedSessionKey, Nonce, IsOwner) VALUES (?,?,?,?,?)`,
+            [sessionId, req.userId, encrypted_session_key, nonce, 1], (err, rows)=>{
+                if (err) {
+                    conn.rollback(() => {});
+                    return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+                }
+
+                conn.commit((err) => {
+                    if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+                });
+
+                return res.json({
+                    "sessionId" : sessionId,
+                });
+            });
+        });
     });
 });
 

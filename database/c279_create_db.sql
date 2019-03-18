@@ -93,9 +93,9 @@ COMMIT;
 -- Table `c279`.`Sessions`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Sessions` (
-  `SessionId` INT NOT NULL,
+  `SessionId` INT NOT NULL AUTO_INCREMENT,
   `SessionType` VARCHAR(10) NOT NULL,
-  `SessionStartDate` DATETIME NOT NULL,
+  `SessionStartDate` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`SessionId`))
 ENGINE = InnoDB;
 
@@ -106,6 +106,9 @@ ENGINE = InnoDB;
 CREATE TABLE IF NOT EXISTS `c279`.`UserToSession` (
   `Sessions_SessionId` INT NOT NULL,
   `Users_UserId` INT NOT NULL,
+  `EncryptedSessionKey` VARCHAR(88) NOT NULL,
+  `Nonce` VARCHAR(88) NOT NULL,
+  `IsOwner` INT NOT NULL,
   PRIMARY KEY (`Sessions_SessionId`, `Users_UserId`),
   INDEX `fk_Sessions_has_Users_Users1_idx` (`Users_UserId` ASC),
   INDEX `fk_Sessions_has_Users_Sessions1_idx` (`Sessions_SessionId` ASC),
@@ -219,29 +222,6 @@ CREATE TABLE IF NOT EXISTS `c279`.`FileEncryptionHeaderStore` (
     ON UPDATE NO ACTION,
   CONSTRAINT `fk_FileEncryptionHeaderStore_Users2`
     FOREIGN KEY (`Sharee_UserId`)
-    REFERENCES `c279`.`Users` (`UserId`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION)
-ENGINE = InnoDB;
-
-
--- -----------------------------------------------------
--- Table `c279`.`GroupSessionSymmetricKey`
--- -----------------------------------------------------
-CREATE TABLE IF NOT EXISTS `c279`.`GroupSessionSymmetricKey` (
-  `SessionSymmetricKeyId` INT NOT NULL AUTO_INCREMENT,
-  `Owner_UserId` INT NOT NULL,
-  `Sessions_SessionId` INT NOT NULL,
-  INDEX `fk_GroupSessionSymmetricKey_Sessions1_idx` (`Sessions_SessionId` ASC),
-  INDEX `fk_GroupSessionSymmetricKey_Users1_idx` (`Owner_UserId` ASC),
-  PRIMARY KEY (`SessionSymmetricKeyId`),
-  CONSTRAINT `fk_GroupSessionSymmetricKey_Sessions1`
-    FOREIGN KEY (`Sessions_SessionId`)
-    REFERENCES `c279`.`Sessions` (`SessionId`)
-    ON DELETE NO ACTION
-    ON UPDATE NO ACTION,
-  CONSTRAINT `fk_GroupSessionSymmetricKey_Users1`
-    FOREIGN KEY (`Owner_UserId`)
     REFERENCES `c279`.`Users` (`UserId`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION)

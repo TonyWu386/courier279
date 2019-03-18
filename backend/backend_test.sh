@@ -42,4 +42,6 @@ curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api
 
 printf "\n\nTesting group messages...\n"
 curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n"}' -b cookiefileA localhost:3001/api/messages/group/session/
+printf "\n"
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/messages/group/session/
 printf "\nDone\n"

@@ -467,6 +467,35 @@ app.get('/api/users/', function (req, res, next) {
 });
 
 
+/*  For getting the group sessions the logged-in user is a part of
+    GET /api/messages/group/session/
+*/
+app.get('/api/messages/group/session/', function (req, res, next) {
+    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
+
+    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, us.IsOwner FROM UserToSession us
+                INNER JOIN Sessions s
+                ON us.Sessions_SessionId = s.SessionId
+                WHERE us.Users_UserId = ?;`,
+    [req.userId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+        let sessions = [];
+
+        rows.forEach(element => {
+            sessions.push({
+                'SessionId' : element.SessionId,
+                'SessionType' : element.SessionType,
+                'SessionStartDate' : element.SessionStartDate,
+                'IsOwner' : element.IsOwner,
+            });
+        });
+
+        return res.json(sessions);
+    });
+});
+
+
 
 /*  For starting a new group message session
     Calling user becomes the owner of the session

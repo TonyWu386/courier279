@@ -176,7 +176,9 @@ export default class SceneTxtController extends React.Component {
       let target_pubkey = util.decodeBase64(response.data.pubkey);
       let message_nonce = nacl.randomBytes(nacl.box.nonceLength);
 
-      let encrypted_message = nacl.box(util.decodeUTF8(this.state.txt), message_nonce, target_pubkey, this.props.getUserPrivKey());
+      const ecdh_shared_secret = nacl.box.before(target_pubkey, this.props.getUserPrivKey());
+
+      const encrypted_message = nacl.box.after(util.decodeUTF8(this.state.txt), message_nonce, ecdh_shared_secret);
 
       return axios.post(server + "/api/messages/direct/", {
         encrypted_body: util.encodeBase64(encrypted_message),

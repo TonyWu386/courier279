@@ -156,28 +156,38 @@ export default class SceneTxtController extends React.Component {
   fetchUserMessages() {
     // corresponds to backend GET for this user
     // TODO engineer this to be able to get message from a specific user
-    axios.get(server + "/api/messages/direct/?from=" + this.state.target)
-      .then((response) => {
-        // grab the messages
-        // Unencrypt them with the relevant keys (which should be passed down)
-        // and store the result so they can be drawn
-        let msg_str = '';
-        response.data.forEach(msg => {
-          msg_str += "ID " + msg.DirectMessageId;
-          msg_str += " :Encrypted text " + msg.EncryptedText;
-          msg_str += " :Sender " + msg.SenderUsername;
-          msg_str += " :Target " + msg.ReceiverUsername;
-          msg_str += " :Nonce " + msg.Nonce;
-        });
+    let target_pubkey = null;
+    axios.get(server + "/api/crypto/pubkey/?username=" + this.state.target)
+    .then((response) => {
+      target_pubkey = util.decodeBase64(response.data.pubkey);
 
-        this.setState({
-          testgotmsg: msg_str,
-        });
+      return axios.get(server + "/api/messages/direct/?from=" + this.state.target);
+    })
+    .then((response) => {
+      // grab the messages
+      // Unencrypt them with the relevant keys (which should be passed down)
+      // and store the result so they can be drawn
+      const ecdh_shared_secret = nacl.box.before(target_pubkey, this.props.getUserPrivKey());
 
-        console.log("Got following direct messages from DB" + response.data);
-      }).catch((err) => {
-        console.log("Messed up while getting user msgs " + err.response.data);
+      let msg_str = '';
+      response.data.forEach(msg => {
+        const decrypted_text = nacl.box.open.after(util.decodeBase64(msg.EncryptedText), util.decodeBase64(msg.Nonce), ecdh_shared_secret);
+
+        msg_str += "ID " + msg.DirectMessageId;
+        msg_str += " :Decrypted text " + util.encodeUTF8(decrypted_text);
+        msg_str += " :Sender " + msg.SenderUsername;
+        msg_str += " :Target " + msg.ReceiverUsername;
+        msg_str += " :Nonce " + msg.Nonce;
       });
+
+      this.setState({
+        testgotmsg: msg_str,
+      });
+
+      console.log("Got following direct messages from DB" + response.data);
+    }).catch((err) => {
+      console.log("Messed up while getting user msgs " + err.response.data);
+    });
     
   }
 

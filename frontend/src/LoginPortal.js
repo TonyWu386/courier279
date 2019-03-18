@@ -106,6 +106,7 @@ export default class LoginPortal extends React.Component {
 
 
   ServerSignup(new_user_data, username) {
+      debugger;
     axios.post(server + "/api/signup/", {
       username: username,
       password: new_user_data.server_auth_key,

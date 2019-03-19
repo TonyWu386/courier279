@@ -32,6 +32,8 @@ export default class SceneTxtController extends React.Component {
       staleLiveInfo: false,
       liveInfo: '',
       testgotmsg: '',
+      staleRender: false,
+      toBeRendered: [], // {sender, text}
     }
   }
 
@@ -170,6 +172,7 @@ export default class SceneTxtController extends React.Component {
       const ecdh_shared_secret = nacl.box.before(target_pubkey, this.props.getUserPrivKey());
 
       let msg_str = '';
+      let newMessage = [];
       response.data.forEach(msg => {
         const decrypted_text = nacl.box.open.after(util.decodeBase64(msg.EncryptedText), util.decodeBase64(msg.Nonce), ecdh_shared_secret);
 
@@ -178,10 +181,15 @@ export default class SceneTxtController extends React.Component {
         msg_str += " :Sender " + msg.SenderUsername;
         msg_str += " :Target " + msg.ReceiverUsername;
         msg_str += " :Nonce " + msg.Nonce;
+
+        // set stuff that needs to be passed down to renderer
+        newMessage.push({sender : msg.SenderUsername, text : "Says:" + util.encodeUTF8(decrypted_text)});
       });
 
       this.setState({
         testgotmsg: msg_str,
+        toBeRendered: newMessage,
+        staleRender : true,
       });
 
       console.log("Got following direct messages from DB" + response.data);
@@ -238,6 +246,20 @@ export default class SceneTxtController extends React.Component {
     return this.state.movements;
   }
 
+  queryNewMessages() {
+    return this.state.toBeRendered;
+  }
+
+  queryRenderStaleness() {
+    return this.state.staleRender;
+  }
+
+  updateRenderStaleness(newStaleness) {
+    this.setState({
+      staleRender: newStaleness,
+    });
+  }
+
   render() {
     return (
       <div>
@@ -256,6 +278,9 @@ export default class SceneTxtController extends React.Component {
           txt={() => this.queryTxt()}
           msgs={() => this.queryMsg()}
           movementsIn={() => this.queryMovement()}
+          newMsg={() => this.queryNewMessages()}
+          getRenderStaleness={() => this.queryRenderStaleness()}
+          updateRenderStaleness ={(stale) => this.updateRenderStaleness(stale)}
         />
       </div>
     );

@@ -207,7 +207,7 @@ class Webapp extends React.Component {
       <div className="contain-all">
         <div class="signup-feedback">{this.state.staleFeed ? 
             this.state.feedback : 
-            'Hi! Signup or Login to send and recieve'}</div>
+            'Hi! Signup or Login below to begin'}</div>
         <div class="login-status">You currently are {this.state.uname === '' ? 
             'Not Logged In - You won\'t be able to send or recieve anything' : 
             'Logged in as ' + this.state.uname}</div>

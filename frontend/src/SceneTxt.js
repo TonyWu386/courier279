@@ -16,12 +16,8 @@ export default class SceneTxt extends React.Component {
     // TODO apparently it is bad style to copy props into state
     this.state = {
       txt: this.props.txt,
-      msgs: this.props.msgs,
       movementsIn: this.props.movementsIn,
-      // TODO changeover to use the stale render system
       createdSceneObj: [],
-      staleRender: false,
-      toBeRendered: [], // {sender, text}
     }
   }
 
@@ -158,57 +154,10 @@ export default class SceneTxt extends React.Component {
 
     this.cube.rotation.y += 0.02;
 
-    if (this.state.staleRender) {
+    if (this.props.getRenderStaleness()) {
       // indication that we should rerender what's onscreen
-      // TODO temp commented out
-      // this.drawNewMsg()
-    }
-
-    // update # objects
-    let msgslength = this.state.msgs().length;
-    let newcube = this.cube.clone();
-    
-    // TODO thisisterrible.jpg, we want something like a stale state
-    if (this.state.createdSceneObj.length < msgslength) {
-      // VERY IMPORTANT, STATE SETTING IS ASYNC
-      this.setState((old) => ({
-        createdSceneObj : [...old.createdSceneObj, newcube],
-      }), () => {
-        // TODO extremely rough. testing only.
-        // we'd actually want a smart detection of placements and text
-
-        this.tempctx.clearRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
-        this.tempctx.fillStyle = "rgba(25,25,25,1)";
-        this.tempctx.fillRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
-        this.tempctx.fillStyle = "rgba(250,250,250,1)";
-        // TODO temporary, rework textwraap to not be crappy hardcoded
-        let wrapped = this.state.msgs().slice(-1);
-        let space = 0;
-
-        wrapped.forEach(function(line) {
-          // there is no decent built in height field...
-          space += this.linespacing;
-          this.tempctx.fillText(line, 4, space);
-        }.bind(this));
-
-        // Dealing with async loading
-        this.tempcanvas.toBlob(function(blob) {
-          let imageUrl = URL.createObjectURL(blob);
-          new THREE.TextureLoader().load(imageUrl, function (texture) {
-            // only load material if texture is ready
-            texture.needsUpdate = true;
-            const materiattemp = new THREE.MeshBasicMaterial({ map: texture });
-          
-            newcube.material = materiattemp;
-            newcube.position.z = msgslength * 5;
-            this.scene.add(newcube);
-            console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
-          }.bind(this), undefined, function (err) {
-            console.error("Something bad happened while loading texture!");
-          });
-        }.bind(this));
-        
-      });
+      this.drawNewMsg()
+      console.log("Got and rendered new messages");
     }
 
     // TODO removal case
@@ -231,7 +180,9 @@ export default class SceneTxt extends React.Component {
   }
 
   drawNewMsg() {
-    this.state.toBeRendered.forEach(function(toRender) {
+    // we do not want overlapped cubes, so move em
+    let newOffset = 0;
+    this.props.newMsg().forEach(function(toRender) {
       let newcube = this.cube.clone();
 
       this.tempctx.clearRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
@@ -239,7 +190,7 @@ export default class SceneTxt extends React.Component {
       this.tempctx.fillRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
       this.tempctx.fillStyle = "rgba(250,250,250,1)";
       // TODO wrap this text
-      let wrapped = toRender.text;
+      let wrapped = [toRender.text];
       let space = 0;
 
       wrapped.forEach(function(line) {
@@ -257,7 +208,11 @@ export default class SceneTxt extends React.Component {
           const materiattemp = new THREE.MeshBasicMaterial({ map: texture });
         
           newcube.material = materiattemp;
-          newcube.position.z = msgslength * 5;
+          newcube.position.z = this.camera.position.z - 10;
+          newcube.position.x = this.camera.position.x - newOffset;
+          newcube.position.y = this.camera.position.y;
+
+          newOffset += 5;
           this.scene.add(newcube);
           console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
         }.bind(this), undefined, function (err) {
@@ -265,13 +220,15 @@ export default class SceneTxt extends React.Component {
         });
       }.bind(this));
 
-    }.bind(this));
-    // clear state of toBeRendered
+      this.setState((old) => ({
+        createdSceneObj : [...old.createdSceneObj, newcube],
+      }));
 
-    this.setState({
-        staleRender: false,
-        toBeRendered: [],
-      });
+    }.bind(this));
+
+    // clear render state
+
+    this.props.updateRenderStaleness(false);
   }
 
   textwrap() {

@@ -32,8 +32,8 @@ export default class SceneTxt extends React.Component {
       0.1,
       1000
     )
-    const renderer = new THREE.WebGLRenderer({ antialias: true })
-    const geometry = new THREE.BoxGeometry(3, 3, 3)
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    const geometry = new THREE.BoxGeometry(3, 3, 3);
 
     // == Handlers for dynamic writing ==
 
@@ -61,7 +61,7 @@ export default class SceneTxt extends React.Component {
     this.canvascontext = chatdraw;
     this.texture = threetext;
 
-    const cube = new THREE.Mesh(geometry, material)
+    const writerCube = new THREE.Mesh(geometry, material);
 
     // To avoid having a bunch of static canvases, have one public temp canvas
     const tempcanvas = document.createElement('canvas');
@@ -94,7 +94,7 @@ export default class SceneTxt extends React.Component {
 
     camera.position.z = 8
     camera.position.y = 2
-    scene.add(cube)
+    scene.add(writerCube)
     renderer.setClearColor('#000000')
     renderer.setSize(width, height)
 
@@ -102,7 +102,7 @@ export default class SceneTxt extends React.Component {
     this.camera = camera
     this.renderer = renderer
     this.material = material
-    this.cube = cube
+    this.writerCube = writerCube
 
     this.mount.appendChild(this.renderer.domElement)
     this.start()
@@ -152,7 +152,10 @@ export default class SceneTxt extends React.Component {
     this.texture.needsUpdate = true;
     this.material.map = this.texture;
 
-    this.cube.rotation.y += 0.02;
+    this.writerCube.rotation.y += 0.02;
+    this.writerCube.position.x = this.camera.position.x;
+    this.writerCube.position.y = this.camera.position.y;
+    this.writerCube.position.z = this.camera.position.z -10;
 
     if (this.props.getRenderStaleness()) {
       // indication that we should rerender what's onscreen
@@ -183,7 +186,9 @@ export default class SceneTxt extends React.Component {
     // we do not want overlapped cubes, so move em
     let newOffset = 0;
     this.props.newMsg().forEach(function(toRender) {
-      let newcube = this.cube.clone();
+      let geom = new THREE.BoxGeometry(4, 4, 4);
+      let mat = new THREE.MeshBasicMaterial({ color : 0xffffff });
+      let newcube = new THREE.Mesh(geom, mat);
 
       this.tempctx.clearRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
       this.tempctx.fillStyle = "rgba(25,25,25,1)";
@@ -205,9 +210,8 @@ export default class SceneTxt extends React.Component {
         new THREE.TextureLoader().load(imageUrl, function (texture) {
           // only load material if texture is ready
           texture.needsUpdate = true;
-          const materiattemp = new THREE.MeshBasicMaterial({ map: texture });
         
-          newcube.material = materiattemp;
+          newcube.material.map = texture;
           newcube.position.z = this.camera.position.z - 10;
           newcube.position.x = this.camera.position.x - newOffset;
           newcube.position.y = this.camera.position.y;

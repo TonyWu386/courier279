@@ -25,7 +25,6 @@ export default class SceneTxtController extends React.Component {
     this.state = {
       txt: '',
       target: '',
-      existingMsg: [],
       movements: {forward: false, backward: false, right: false, left: false},
       isCameraLocked: false,
       hasBeenChanged: false, // currently unused. Will want later
@@ -66,15 +65,9 @@ export default class SceneTxtController extends React.Component {
   handleAdd(e) {
     // Basic frontend check that non-auth users can't do anything
     if (this.props.isUserLogin()) {
-      // TODO this entire section is a mess and needs a rework
-      // be very careful with immutability
-      this.setState((old) => ({
-        existingMsg : [...old.existingMsg, old.txt],
-      }), () => {
-        // handle pushing the new MSG to db by calling the helper below
-        this.pushUserMessage();
-        console.log('says ', this.state.existingMsg);
-      });
+      // handle pushing the new MSG to db by calling the helper below
+      this.pushUserMessage();
+      console.log('says ', this.state.existingMsg);
     } else {
       this.setState({
         staleLiveInfo: true,
@@ -232,12 +225,6 @@ export default class SceneTxtController extends React.Component {
 
   }
 
-  
-
-  queryMsg() {
-    return this.state.existingMsg
-  }
-
   queryTxt() {
     return this.state.txt
   }
@@ -276,7 +263,6 @@ export default class SceneTxtController extends React.Component {
           : 'Send messages to known usernames using the box at the top.'}</div>
         <SceneTxt 
           txt={() => this.queryTxt()}
-          msgs={() => this.queryMsg()}
           movementsIn={() => this.queryMovement()}
           newMsg={() => this.queryNewMessages()}
           getRenderStaleness={() => this.queryRenderStaleness()}

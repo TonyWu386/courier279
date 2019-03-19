@@ -473,9 +473,11 @@ app.get('/api/users/', function (req, res, next) {
 app.get('/api/messages/group/session/', function (req, res, next) {
     if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
 
-    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, us.IsOwner FROM UserToSession us
+    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username FROM UserToSession us
                 INNER JOIN Sessions s
                 ON us.Sessions_SessionId = s.SessionId
+                INNER JOIN Users u
+                ON s.Owner_UserId = u.UserId
                 WHERE us.Users_UserId = ?;`,
     [req.userId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -487,13 +489,55 @@ app.get('/api/messages/group/session/', function (req, res, next) {
                 'SessionId' : element.SessionId,
                 'SessionType' : element.SessionType,
                 'SessionStartDate' : element.SessionStartDate,
-                'IsOwner' : element.IsOwner,
+                'OwnerUsername' : element.Username,
             });
         });
 
         return res.json(sessions);
     });
 });
+
+
+
+
+/*  Adds a new user to an existing group session
+    POST /api/messages/group/session/adduser/
+*/
+app.post('/api/messages/group/session/adduser/', function (req, res, next) {
+    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
+
+    let encrypted_session_key = req.body.encrypted_session_key;
+    let nonce = req.body.nonce;
+    let username_to_add = req.body.username_to_add;
+    let sessionId = req.body.sessionId;
+
+    if ((!encrypted_session_key) || (!nonce) || (!username_to_add) || (!sessionId)) return res.status(400).contentType("text/plain").end("Did not get required data");
+
+    conn.query(`SELECT UserId FROM Users WHERE Username = ?`, [username_to_add], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(400).contentType("text/plain").end("Username to add does not exist");
+
+        let userId_to_add = rows[0].UserId;
+
+        conn.query(`SELECT Owner_UserId
+                    FROM Sessions
+                    WHERE SessionId = ?`,
+        [sessionId], (err, rows) => {
+            if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+            if (!rows.length) return res.status(400).contentType("text/plain").end("Group session not found");
+            if (rows[0].Owner_UserId != req.userId) return res.status(401).contentType("text/plain").end("Not the owner of this group session");
+
+            conn.query(`INSERT INTO UserToSession(Sessions_SessionId, Users_UserId, EncryptedSessionKey, Nonce)
+                        VALUES (?,?,?,?)`,
+            [sessionId, userId_to_add, encrypted_session_key, nonce], (err, rows) => {
+                if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+                return res.json("Added user " + username_to_add + " to session with id " + sessionId);
+            });
+        });
+    });
+});
+
 
 
 
@@ -512,7 +556,9 @@ app.post('/api/messages/group/session/', function (req, res, next) {
     conn.beginTransaction((err) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
-        conn.query(`INSERT INTO Sessions(SessionType) VALUES (?)`, ['group'], (err, rows) => {
+        conn.query(`INSERT INTO Sessions(SessionType, Owner_UserId)
+                    VALUES (?, ?)`,
+        ['group', req.userId], (err, rows) => {
             if (err) {
                 conn.rollback(() => {});
                 return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -520,8 +566,9 @@ app.post('/api/messages/group/session/', function (req, res, next) {
 
             const sessionId = rows.insertId;
 
-            conn.query(`INSERT INTO UserToSession(Sessions_SessionId, Users_UserId, EncryptedSessionKey, Nonce, IsOwner) VALUES (?,?,?,?,?)`,
-            [sessionId, req.userId, encrypted_session_key, nonce, 1], (err, rows)=>{
+            conn.query(`INSERT INTO UserToSession(Sessions_SessionId, Users_UserId, EncryptedSessionKey, Nonce)
+                        VALUES (?,?,?,?)`,
+            [sessionId, req.userId, encrypted_session_key, nonce], (err, rows)=>{
                 if (err) {
                     conn.rollback(() => {});
                     return res.status(500).contentType("text/plain").end("Internal MySQL Error");

@@ -95,8 +95,15 @@ COMMIT;
 CREATE TABLE IF NOT EXISTS `c279`.`Sessions` (
   `SessionId` INT NOT NULL AUTO_INCREMENT,
   `SessionType` VARCHAR(10) NOT NULL,
+  `Owner_UserId` INT NOT NULL,
   `SessionStartDate` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`SessionId`))
+  PRIMARY KEY (`SessionId`),
+  INDEX `fk_Sessions_Users1_idx` (`Owner_UserId` ASC),
+  CONSTRAINT `fk_Sessions_Users1`
+    FOREIGN KEY (`Owner_UserId`)
+    REFERENCES `c279`.`Users` (`UserId`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
 ENGINE = InnoDB;
 
 
@@ -108,7 +115,6 @@ CREATE TABLE IF NOT EXISTS `c279`.`UserToSession` (
   `Users_UserId` INT NOT NULL,
   `EncryptedSessionKey` VARCHAR(88) NOT NULL,
   `Nonce` VARCHAR(88) NOT NULL,
-  `IsOwner` INT NOT NULL,
   PRIMARY KEY (`Sessions_SessionId`, `Users_UserId`),
   INDEX `fk_Sessions_has_Users_Users1_idx` (`Users_UserId` ASC),
   INDEX `fk_Sessions_has_Users_Sessions1_idx` (`Sessions_SessionId` ASC),

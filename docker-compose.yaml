@@ -52,14 +52,14 @@ services:
 
 
   express:
-    build: ./tech-demonstrator/
+    build: ./frontend/
     ports:
       - 3000:3000
     depends_on:
       - node
     volumes:
-      - ./tech-demonstrator/src/:/usr/src/app/src/
-      - ./tech-demonstrator/public/:/usr/src/app/public/
+      - ./frontend/src/:/usr/src/app/src/
+      - ./frontend/public/:/usr/src/app/public/
     command: bash -c 'sleep 5; npm start'
     links:
       - node

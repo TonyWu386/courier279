@@ -444,7 +444,7 @@ app.get('/api/messages/direct/', function (req, res, next) {
 
 
 /*  Gets all the usernames in the system
-    GET /api/users
+    GET /api/users/
 */
 app.get('/api/users/', function (req, res, next) {
     if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
@@ -467,10 +467,51 @@ app.get('/api/users/', function (req, res, next) {
 });
 
 
-/*  For getting the group sessions the logged-in user is a part of
-    GET /api/messages/group/session/
+/*  For getting the usernames in a particular session
+    GET /api/group/session/:id/
 */
-app.get('/api/messages/group/session/', function (req, res, next) {
+app.get('/api/group/session/:id/', function (req, res, next) {
+    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
+
+    let sessionId = parseInt(req.params.id);
+
+    if (isNaN(sessionId)) return res.status(400).contentType("text/plain").end("Did not get required data");
+
+    conn.query(`SELECT Users_UserId, Username FROM UserToSession
+                INNER JOIN Users
+                ON Users_UserId = UserId
+                WHERE Sessions_SessionId = ?`,
+    [sessionId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+        let accepted = false;
+        let users = [];
+
+        rows.forEach(element => {
+            if (element.Username == req.username) {
+                accepted = true;
+            }
+            users.push({
+                'UserId' : element.Users_UserId,
+                'Username' : element.Username
+            });
+        });
+
+        if (accepted) {
+            return res.json(users);
+        }
+
+        return res.status(401).contentType("text/plain").end("User not a part of this session");
+    });
+});
+
+
+
+
+/*  For getting the group sessions the logged-in user is a part of
+    GET /api/group/session/
+*/
+app.get('/api/group/session/', function (req, res, next) {
     if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
 
     conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username FROM UserToSession us
@@ -501,17 +542,17 @@ app.get('/api/messages/group/session/', function (req, res, next) {
 
 
 /*  Adds a new user to an existing group session
-    POST /api/messages/group/session/adduser/
+    POST /api/group/session/:id/adduser/
 */
-app.post('/api/messages/group/session/adduser/', function (req, res, next) {
+app.post('/api/group/session/:id/adduser/', function (req, res, next) {
     if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
 
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
     let username_to_add = req.body.username_to_add;
-    let sessionId = req.body.sessionId;
+    let sessionId = parseInt(req.params.id);
 
-    if ((!encrypted_session_key) || (!nonce) || (!username_to_add) || (!sessionId)) return res.status(400).contentType("text/plain").end("Did not get required data");
+    if ((!encrypted_session_key) || (!nonce) || (!username_to_add) || (isNaN(sessionId))) return res.status(400).contentType("text/plain").end("Did not get required data");
 
     conn.query(`SELECT UserId FROM Users WHERE Username = ?`, [username_to_add], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -543,9 +584,9 @@ app.post('/api/messages/group/session/adduser/', function (req, res, next) {
 
 /*  For starting a new group message session
     Calling user becomes the owner of the session
-    POST /api/messages/group/session/
+    POST /api/group/session/
 */
-app.post('/api/messages/group/session/', function (req, res, next) {
+app.post('/api/group/session/', function (req, res, next) {
     if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
 
     let encrypted_session_key = req.body.encrypted_session_key;

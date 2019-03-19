@@ -41,14 +41,16 @@ printf "\n"
 curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/messages/direct/?toandfrom=testuserB
 
 printf "\n\nTesting group messages...\n"
-curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n"}' -b cookiefileA localhost:3001/api/messages/group/session/
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n"}' -b cookiefileA localhost:3001/api/group/session/
 printf "\n"
-curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/messages/group/session/
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/group/session/
 printf "\n"
-curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n", "username_to_add":"testUserB", "sessionId":1}' -b cookiefileA localhost:3001/api/messages/group/session/adduser/
-curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n", "username_to_add":"testUserC", "sessionId":1}' -b cookiefileA localhost:3001/api/messages/group/session/adduser/
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n", "username_to_add":"testUserB"}' -b cookiefileA localhost:3001/api/group/session/1/adduser/
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n", "username_to_add":"testUserC"}' -b cookiefileA localhost:3001/api/group/session/1/adduser/
 printf "\nAdding to group session with bad info...\n"
-curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n", "username_to_add":"testUserB", "sessionId":2}' -b cookiefileA localhost:3001/api/messages/group/session/adduser/
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n", "username_to_add":"testUserB"}' -b cookiefileA localhost:3001/api/group/session/2/adduser/
 printf "\n"
-curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n", "username_to_add":"testUserD", "sessionId":1}' -b cookiefileB localhost:3001/api/messages/group/session/adduser/
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"x", "nonce":"n", "username_to_add":"testUserD"}' -b cookiefileB localhost:3001/api/group/session/1/adduser/
+printf "\n"
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/group/session/1/
 printf "\nDone\n"

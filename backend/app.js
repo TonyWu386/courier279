@@ -8,6 +8,7 @@ const cookie = require('cookie');
 const crypto = require('crypto');
 const mysql = require('mysql');
 const cors = require('cors');
+const validator = require('validator');
 
 
 const corsOptions = {
@@ -71,12 +72,28 @@ app.use(function (req, res, next){
 
 
 
+let isAuthenticated = function(req, res, next) {
+    if (!req.session.username) return res.status(401).contentType("text/plain").end("Not signed in - access denied");
+    next();
+};
+
+
+
+/*
+    Checks for
+    body.username
+*/
+let sanitizeSignin = function(req, res, next) {
+    req.body.username = validator.escape(req.body.username);
+    next();
+}
+
 /*
     POST /api/signin/
     Logs an existing user into the webapp
 */
-app.post('/api/signin/', function (req, res, next) {
-    var username = req.body.username;
+app.post('/api/signin/', sanitizeSignin, function (req, res, next) {
+    let username = req.body.username;
     // retrieve user from the database
 
     conn.query(`SELECT u.UserId, u.Username, c.Password, c.Salt, c.PubKey, c.EncryptedPrivKey, c.EncryptedPrivKeyNonce, c.ClientSymKdfSalt
@@ -105,7 +122,7 @@ app.post('/api/signin/', function (req, res, next) {
                   maxAge: 60 * 60 * 24 * 7
             }));
 
-            req.session.username = req.body.username;
+            req.session.username = username;
             req.session.userId = user.UserId;
 
             const user_crypt_info = {
@@ -122,12 +139,28 @@ app.post('/api/signin/', function (req, res, next) {
 
 
 
+/*
+    Checks for
+    body.username
+    body.pubkey
+    body.enc_privkey_nonce
+    body.enc_privkey
+    body.client_sym_kdf_salt
+*/
+let sanitizeSignup = function(req, res, next) {
+    req.body.username = validator.escape(req.body.username);
+    if (!validator.isBase64(req.body.pubkey)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.enc_privkey_nonce)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.enc_privkey)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.client_sym_kdf_salt)) return res.status(400).end("bad input");
+    next();
+}
 
 /*
     POST /api/signup/
     Creates a new user for the webapp, also logs in automatically
 */
-app.post('/api/signup/', function (req, res, next) {
+app.post('/api/signup/', sanitizeSignup, function (req, res, next) {
     let username = req.body.username;
     let pubkey = req.body.pubkey;
     let enc_privkey_nonce = req.body.enc_privkey_nonce;
@@ -159,7 +192,7 @@ app.post('/api/signup/', function (req, res, next) {
                     maxAge: 60 * 60 * 24 * 7
                 }));
                 
-                req.session.username = req.body.username;
+                req.session.username = username;
                 req.session.userId = new_userId;
 
                 conn.commit((err) => {
@@ -193,13 +226,23 @@ app.post('/api/signup/', function (req, res, next) {
 
 
 
+/*
+    Checks for
+    body.owning_username
+    boby.target_username
+    body.contact_type
+*/
+let sanitizeContact = function(req, res, next) {
+    req.body.owning_username = validator.escape(req.body.owning_username);
+    req.body.target_username = validator.escape(req.body.target_username);
+    req.body.contact_type = validator.escape(req.body.contact_type);
+    next();
+}
 
 /*  For creating a new contacts
     POST /api/contacts/
 */
-app.post('/api/contacts/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.post('/api/contacts/', sanitizeContact, isAuthenticated, function (req, res, next) {
     let owning_username = req.body.owning_username;
     let target_username = req.body.target_username;
     let contact_type = req.body.contact_type;
@@ -207,7 +250,7 @@ app.post('/api/contacts/', function (req, res, next) {
     let owning_id = null;
     let target_id = null;
 
-    if (req.username != owning_username) return res.status(401).contentType("text/plain").end("Not signed in as owning user");
+    if (req.username != owning_username) return res.status(403).contentType("text/plain").end("Not signed in as owning user");
 
     conn.query(`SELECT UserId From Users WHERE Username = ?;`, [owning_username], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -247,9 +290,7 @@ app.post('/api/contacts/', function (req, res, next) {
 /*  Gets all contacts owned by username
     POST /api/contacts/?username=foo
 */
-app.get('/api/contacts/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.get('/api/contacts/', isAuthenticated, function (req, res, next) {
     let owning_username = req.query.username;
 
     if (!owning_username) return res.status(400).contentType("text/plain").end("Unable to parse username for getting contacts");
@@ -285,9 +326,7 @@ app.get('/api/contacts/', function (req, res, next) {
 /*  Gets the public key owned by username
     GET /api/crypto/pubkey/?username=foo
 */
-app.get('/api/crypto/pubkey/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.get('/api/crypto/pubkey/', isAuthenticated, function (req, res, next) {
     let owning_username = req.query.username;
 
     if (!owning_username) return res.status(400).contentType("text/plain").end("Unable to parse username for getting pubkey");
@@ -312,9 +351,7 @@ app.get('/api/crypto/pubkey/', function (req, res, next) {
 /*  Delete a contact by ContactId
     DELETE /api/contacts/:id/
 */
-app.delete('/api/contacts/:id/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.delete('/api/contacts/:id/', isAuthenticated, function (req, res, next) {
     if (!req.params.id) return res.status(400).contentType("text/plain").end("Unable to parse ContactId for deletion");
 
     const contactId = req.params.id;
@@ -335,12 +372,24 @@ app.delete('/api/contacts/:id/', function (req, res, next) {
 
 
 
+
+/*
+    Checks for
+    body.target_username
+    body.encrypted_body
+    body.nonce
+*/
+let sanitizeDirectMessage = function(req, res, next) {
+    req.body.target_username = validator.escape(req.body.target_username);
+    if (!validator.isBase64(req.body.encrypted_body)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
+    next();
+}
+
 /*  For pushing a new direct message to the server
     POST /api/messages/direct/
 */
-app.post('/api/messages/direct/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.post('/api/messages/direct/', sanitizeDirectMessage, isAuthenticated, function (req, res, next) {
     let target_username = req.body.target_username;
     let encrypted_body = req.body.encrypted_body;
     let nonce = req.body.nonce;
@@ -366,6 +415,7 @@ app.post('/api/messages/direct/', function (req, res, next) {
 });
 
 
+
 /*  For getting direct messages sent from a username, to the logged-in user
     GET /api/messages/direct/?from=foo
 
@@ -375,9 +425,7 @@ app.post('/api/messages/direct/', function (req, res, next) {
     For getting all back-and-forth direct messages between 2 users
     GET /api/messages/direct/?toandfrom=foo
 */
-app.get('/api/messages/direct/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.get('/api/messages/direct/', isAuthenticated, function (req, res, next) {
     let from_username = req.query.from;
     let to_username = req.query.to;
     let toandfrom_username = req.query.toandfrom;
@@ -446,8 +494,7 @@ app.get('/api/messages/direct/', function (req, res, next) {
 /*  Gets all the usernames in the system
     GET /api/users/
 */
-app.get('/api/users/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
+app.get('/api/users/', isAuthenticated, function (req, res, next) {
 
     conn.query(`SELECT Username
                 FROM Users`,
@@ -470,9 +517,7 @@ app.get('/api/users/', function (req, res, next) {
 /*  For getting the usernames in a particular session
     GET /api/group/session/:id/
 */
-app.get('/api/group/session/:id/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.get('/api/group/session/:id/', isAuthenticated, function (req, res, next) {
     let sessionId = parseInt(req.params.id);
 
     if (isNaN(sessionId)) return res.status(400).contentType("text/plain").end("Did not get required data");
@@ -501,7 +546,7 @@ app.get('/api/group/session/:id/', function (req, res, next) {
             return res.json(users);
         }
 
-        return res.status(401).contentType("text/plain").end("User not a part of this session");
+        return res.status(403).contentType("text/plain").end("User not a part of this session");
     });
 });
 
@@ -511,8 +556,7 @@ app.get('/api/group/session/:id/', function (req, res, next) {
 /*  For getting the group sessions the logged-in user is a part of
     GET /api/group/session/
 */
-app.get('/api/group/session/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
+app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
 
     conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username FROM UserToSession us
                 INNER JOIN Sessions s
@@ -540,13 +584,23 @@ app.get('/api/group/session/', function (req, res, next) {
 
 
 
+/*
+    Checks for
+    body.username_to_add
+    body.encrypted_session_key
+    body.nonce
+*/
+let sanitizeUserToSession = function(req, res, next) {
+    req.body.username_to_add = validator.escape(req.body.username_to_add);
+    if (!validator.isBase64(req.body.encrypted_session_key)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
+    next();
+}
 
 /*  Adds a new user to an existing group session
     POST /api/group/session/:id/adduser/
 */
-app.post('/api/group/session/:id/adduser/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.post('/api/group/session/:id/adduser/', sanitizeUserToSession, isAuthenticated, function (req, res, next) {
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
     let username_to_add = req.body.username_to_add;
@@ -566,7 +620,7 @@ app.post('/api/group/session/:id/adduser/', function (req, res, next) {
         [sessionId], (err, rows) => {
             if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
             if (!rows.length) return res.status(400).contentType("text/plain").end("Group session not found");
-            if (rows[0].Owner_UserId != req.userId) return res.status(401).contentType("text/plain").end("Not the owner of this group session");
+            if (rows[0].Owner_UserId != req.userId) return res.status(403).contentType("text/plain").end("Not the owner of this group session");
 
             conn.query(`INSERT INTO UserToSession(Sessions_SessionId, Users_UserId, EncryptedSessionKey, Nonce)
                         VALUES (?,?,?,?)`,
@@ -581,14 +635,22 @@ app.post('/api/group/session/:id/adduser/', function (req, res, next) {
 
 
 
+/*
+    Checks for
+    body.encrypted_session_key
+    body.nonce
+*/
+let sanitizeNewSession = function(req, res, next) {
+    if (!validator.isBase64(req.body.encrypted_session_key)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
+    next();
+}
 
 /*  For starting a new group message session
     Calling user becomes the owner of the session
     POST /api/group/session/
 */
-app.post('/api/group/session/', function (req, res, next) {
-    if (req.username == null) return res.status(403).contentType("text/plain").end("Not signed in");
-
+app.post('/api/group/session/', sanitizeNewSession, isAuthenticated, function (req, res, next) {
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
 

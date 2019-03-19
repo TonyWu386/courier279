@@ -15,6 +15,7 @@
     "express": "^4.16.4",
     "express-session": "^1.15.6",
     "mysql": "^2.16.0",
-    "universal-cookie": "^3.0.7"
+    "universal-cookie": "^3.0.7",
+    "validator": "^10.11.0"
   }
 }

@@ -18,9 +18,11 @@ export default class SceneTxtController extends React.Component {
     super(props)
 
     this.pushUserMessage = this.pushUserMessage.bind(this);
+    this.fetchUserMessages = this.fetchUserMessages.bind(this);
 
     this.handleKeyD = this.handleKeyDown.bind(this);
     this.handleKeyU = this.handleKeyUp.bind(this);
+    this.handleKeyQE = this.handleContactNav.bind(this);
 
     this.state = {
       txt: '',
@@ -44,6 +46,7 @@ export default class SceneTxtController extends React.Component {
   componentDidMount() {
     document.addEventListener('keydown', this.handleKeyD, false);
     document.addEventListener('keyup', this.handleKeyU, false);
+    document.addEventListener('keyup', this.handleKeyQE, false);
     // add to parent's observer list
     this.props.addNewLoginObserver(function() {
       // simple mirroring of state
@@ -56,8 +59,9 @@ export default class SceneTxtController extends React.Component {
   }
 
   componentWillUnmount() {
-    document.removeEventListener('keydown', this.handleKeyDown, false);
-    document.removeEventListener('keyup', this.handleKeyUp, false);
+    document.removeEventListener('keydown', this.handleKeyD, false);
+    document.removeEventListener('keyup', this.handleKeyU, false);
+    document.removeEventListener('keyup', this.handleKeyQE, false);
   }
 
   handleInputChange(event) {
@@ -120,8 +124,33 @@ export default class SceneTxtController extends React.Component {
     });
   }
 
+  // for navigation through the contacts submenu
   handleContactNav(event) {
-    
+    if (!this.state.isCameraLocked && this.state.activeContact != -1) {
+      let activeC = this.state.activeContact;
+      switch(event.key) {
+        case 'q': 
+                  if (activeC < this.state.contactList.length - 1) {
+                    this.setState({
+                      activeContact : activeC + 1,
+                    }, () => {
+                      this.fetchUserMessages();
+                      console.log('Q up' + this.state.activeContact);
+                    }); 
+                  } break;
+
+        case 'e': 
+                  if (activeC > 0) {
+                    this.setState({
+                      activeContact : activeC - 1,
+                    }, () => {
+                      this.fetchUserMessages();
+                      console.log('E up' + this.state.activeContact);
+                    });
+                  } break;
+        default:
+      }
+    }
   }
 
   handleKeyDown(event) {
@@ -185,6 +214,9 @@ export default class SceneTxtController extends React.Component {
           staleContacts: true,
           contactList: temp,
           activeContact : active,
+        }, () => {
+          // callback on whose msgs to display
+          this.fetchUserMessages();
         });
         console.log("contact list is " + temp);
       }).catch((err) => {
@@ -215,13 +247,14 @@ export default class SceneTxtController extends React.Component {
 
   fetchUserMessages() {
     // corresponds to backend GET for this user
-    // TODO engineer this to be able to get message from a specific user
+    if (this.state.activeContact == -1) return;
     let target_pubkey = null;
-    axios.get(server + "/api/crypto/pubkey/?username=" + this.state.target)
+    let contactTar = this.state.contactList[this.state.activeContact].TargetUsername;
+    axios.get(server + "/api/crypto/pubkey/?username=" + contactTar)
     .then((response) => {
       target_pubkey = util.decodeBase64(response.data.pubkey);
 
-      return axios.get(server + "/api/messages/direct/?from=" + this.state.target);
+      return axios.get(server + "/api/messages/direct/?from=" + contactTar);
     })
     .then((response) => {
       // grab the messages
@@ -345,12 +378,15 @@ export default class SceneTxtController extends React.Component {
         <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
-        <button class="btn" id="force" onClick={() => this.fetchUserMessages()}>DEV ONLY - Force Self Message Check and Show</button>
+        <div id="tempcontacts">{this.state.activeContact >= 0 ? 
+        this.state.contactList[this.state.activeContact].TargetUsername + " is the active contact"
+        : 'No Active Contact'}</div>
         <div class="lock">Camera is currently {this.state.isCameraLocked ? 
           'LOCKED - typing will not move the camera' : 'UNLOCKED - you can move in the world'}</div>
-        <div id="controls">WASD to move. Use the Toggle Camera Locking button when you want to type</div>
+        <div id="controls">WASD to move. QE to change active contact. Use the Toggle Camera Locking button when you want to type</div>
         <div id="liveinfo">{this.state.staleLiveInfo ? this.state.liveInfo 
           : 'Send messages to known usernames using the box at the top.'}</div>
+        
         <SceneTxt 
           txt={() => this.queryTxt()}
           movementsIn={() => this.queryMovement()}

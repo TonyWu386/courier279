@@ -155,7 +155,7 @@ export default class SceneTxt extends React.Component {
     this.writerCube.rotation.y += 0.02;
     this.writerCube.position.x = this.camera.position.x;
     this.writerCube.position.y = this.camera.position.y;
-    this.writerCube.position.z = this.camera.position.z -10;
+    this.writerCube.position.z = this.camera.position.z -15;
 
     if (this.props.getRenderStaleness()) {
       // indication that we should rerender what's onscreen
@@ -182,12 +182,22 @@ export default class SceneTxt extends React.Component {
     )
   }
 
+  randomDarkColor() {
+    // Thanks, stackoverflow #1484514
+    let possible = '0123456789ABCDEF';
+    let finalC = '0xfff';
+    for (let index = 0; index < 3; index++) { 
+      finalC += possible[Math.floor(Math.random() * 16)];
+    }
+    return finalC;
+  }
+
   drawNewMsg() {
     // we do not want overlapped cubes, so move em
     let newOffset = 0;
     this.props.newMsg().forEach(function(toRender) {
       let geom = new THREE.BoxGeometry(4, 4, 4);
-      let mat = new THREE.MeshBasicMaterial({ color : 0xffffff });
+      let mat = new THREE.MeshBasicMaterial({ color : this.randomDarkColor() });
       let newcube = new THREE.Mesh(geom, mat);
 
       this.tempctx.clearRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
@@ -195,7 +205,7 @@ export default class SceneTxt extends React.Component {
       this.tempctx.fillRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
       this.tempctx.fillStyle = "rgba(250,250,250,1)";
       // TODO wrap this text
-      let wrapped = [toRender.text];
+      let wrapped = [toRender.sender + " says: ",toRender.text];
       let space = 0;
 
       wrapped.forEach(function(line) {
@@ -213,7 +223,7 @@ export default class SceneTxt extends React.Component {
         
           newcube.material.map = texture;
           newcube.position.z = this.camera.position.z - 10;
-          newcube.position.x = this.camera.position.x - newOffset;
+          newcube.position.x = this.camera.position.x + newOffset;
           newcube.position.y = this.camera.position.y;
 
           newOffset += 5;

@@ -106,7 +106,6 @@ export default class LoginPortal extends React.Component {
 
 
   ServerSignup(new_user_data, username) {
-      debugger;
     axios.post(server + "/api/signup/", {
       username: username,
       password: new_user_data.server_auth_key,
@@ -137,7 +136,7 @@ export default class LoginPortal extends React.Component {
     return (
       <div>
         Username<input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'u')}/>
-        Password<input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'p')}/>
+        Password<input type="password" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'p')}/>
         <button class="btn" onClick={() => this.EnrollUser()}>Enroll User</button>
         <button class="btn" onClick={() => this.SigninUser()}>Signin User</button>
       </div>

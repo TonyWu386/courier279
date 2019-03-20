@@ -110,7 +110,25 @@ class Webapp extends React.Component {
       staleErr: false,
       feedback: '',
       staleFeed: false,
+
+      // when set to true, propagate down things that should happen
+      newLogin: false,
+      loginObservers: [],
     };
+  }
+
+  componentDidUpdate(oldProps) {
+    // this execs everytime component state changes. Good place for observers
+    if (this.state.newLogin === true) {
+      this.state.loginObservers.forEach((observerFunc) => {
+        observerFunc();
+      });
+      this.setState({
+        newLogin: false,
+      });
+      console.log("New login detected");
+    }
+    console.log("Update detected");
   }
 
   handleClick(i) {
@@ -144,6 +162,7 @@ class Webapp extends React.Component {
       this.setState({
         uname: unameNew,
         staleErr: false,
+        newLogin: true,
       });
     } else {
       this.setState({
@@ -179,6 +198,10 @@ class Webapp extends React.Component {
     return this.state.uname;
   }
 
+  queryNewLogin() {
+    return this.state.newLogin;
+  }
+
   // get user public key, is null if no logged in user
   queryUserPubKey() {
     return this.state.pubkey;
@@ -197,11 +220,13 @@ class Webapp extends React.Component {
     console.log("Set crypt info in index.js done");
   }
 
-  render() {
-    const history = this.state.history;
+  watchNewLogin(func) {
+    this.setState((old) => ({
+      loginObservers : [...old.loginObservers, func],
+    }));
+  }
 
-    const keypair = nacl.box.keyPair();
-    console.log(keypair);
+  render() {
 
     return (
       <div className="contain-all">
@@ -232,6 +257,7 @@ class Webapp extends React.Component {
               getUserPubKey={() => this.queryUserPubKey()}
               getUserPrivKey={() => this.queryUserPrivKey()}
               getUserName={() => this.queryLoginName()}
+              addNewLoginObserver={(func) => this.watchNewLogin(func)}
             />
         </div>
       </div>

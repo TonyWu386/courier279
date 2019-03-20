@@ -25,20 +25,34 @@ export default class SceneTxtController extends React.Component {
     this.state = {
       txt: '',
       target: '',
+      contactField: '',
       movements: {forward: false, backward: false, right: false, left: false},
-      isCameraLocked: false,
+      isCameraLocked: true,
       hasBeenChanged: false, // currently unused. Will want later
       staleLiveInfo: false,
       liveInfo: '',
-      testgotmsg: '',
+
       staleRender: false,
       toBeRendered: [], // {sender, text}
+      newLoginRender : false, // indicate that we should draw newlogin objects
+      staleContacts: false,
+      contactList: [], // list of contact objects
+      activeContact: -1, // currently none
     }
   }
 
   componentDidMount() {
     document.addEventListener('keydown', this.handleKeyD, false);
     document.addEventListener('keyup', this.handleKeyU, false);
+    // add to parent's observer list
+    this.props.addNewLoginObserver(function() {
+      // simple mirroring of state
+      this.setState({
+        newLoginRender : true,
+      });
+      // fetch contacts on login.
+      this.fetchUserContactList();
+    }.bind(this));
   }
 
   componentWillUnmount() {
@@ -59,6 +73,14 @@ export default class SceneTxtController extends React.Component {
       target : event.target.value,
     }, () => {
       console.log('target is ', this.state.target);
+    });
+  }
+
+  handleContactAddChange(event) {
+    this.setState({
+      contactField : event.target.value,
+    }, () => {
+      console.log('contact add contains ', this.state.contactField);
     });
   }
 
@@ -96,6 +118,10 @@ export default class SceneTxtController extends React.Component {
       }
 
     });
+  }
+
+  handleContactNav(event) {
+    
   }
 
   handleKeyDown(event) {
@@ -148,6 +174,45 @@ export default class SceneTxtController extends React.Component {
     }
   }
 
+  fetchUserContactList() {
+    axios.get(server + "/api/contacts/?username=" + this.props.getUserName())
+      .then((res) => {
+        let temp = res.data;
+        let active = -1;
+        // temp.sort(); // sort into a logical ordering
+        if (temp.length > 0) active = 0;
+        this.setState({
+          staleContacts: true,
+          contactList: temp,
+          activeContact : active,
+        });
+        console.log("contact list is " + temp);
+      }).catch((err) => {
+        console.error(err.response.data);
+      });
+  }
+
+  updateUserContactList() {
+    axios.post(server + "/api/contacts/", {
+      owning_username : this.props.getUserName(),
+      target_username : this.state.contactField,
+      contact_type : "friend",
+    }).then((res) => {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Added new contact",
+      });
+      this.fetchUserContactList();
+      console.log(res.data);
+    }).catch((err) => {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Contact update failure: "  + (err.response.data || err.response || err),
+      });
+      console.error(err);
+    });
+  }
+
   fetchUserMessages() {
     // corresponds to backend GET for this user
     // TODO engineer this to be able to get message from a specific user
@@ -176,11 +241,10 @@ export default class SceneTxtController extends React.Component {
         msg_str += " :Nonce " + msg.Nonce;
 
         // set stuff that needs to be passed down to renderer
-        newMessage.push({sender : msg.SenderUsername, text : "Says:" + util.encodeUTF8(decrypted_text)});
+        newMessage.push({sender : msg.SenderUsername, text : " " + util.encodeUTF8(decrypted_text)});
       });
 
       this.setState({
-        testgotmsg: msg_str,
         toBeRendered: newMessage,
         staleRender : true,
       });
@@ -247,15 +311,41 @@ export default class SceneTxtController extends React.Component {
     });
   }
 
+  queryNewLogin() {
+    return this.state.newLoginRender;
+  }
+
+  resetNewLogin() {
+    this.setState({
+      newLoginRender: false,
+    });
+  }
+
+  queryContacts() {
+    return this.state.contactList;
+  }
+
+  queryContactStaleness() {
+    return this.state.staleContacts;
+  }
+
+  updateContactStaleness(newStaleness) {
+    this.setState({
+      staleContacts: newStaleness,
+    });
+  }
+
   render() {
     return (
       <div>
+        <input id="contact-type" type="text" value={this.state.value} onChange={(i) => this.handleContactAddChange(i)}/>
+        <button class="btn" id="contact-add" onClick={() => this.updateUserContactList()}>Add a contact</button>
+        <br />
         <input id="content-msg" type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
         <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
         <button class="btn" id="force" onClick={() => this.fetchUserMessages()}>DEV ONLY - Force Self Message Check and Show</button>
-        <div id="show-msg">{this.state.testgotmsg}</div>
         <div class="lock">Camera is currently {this.state.isCameraLocked ? 
           'LOCKED - typing will not move the camera' : 'UNLOCKED - you can move in the world'}</div>
         <div id="controls">WASD to move. Use the Toggle Camera Locking button when you want to type</div>
@@ -267,6 +357,9 @@ export default class SceneTxtController extends React.Component {
           newMsg={() => this.queryNewMessages()}
           getRenderStaleness={() => this.queryRenderStaleness()}
           updateRenderStaleness ={(stale) => this.updateRenderStaleness(stale)}
+          fetchContact={() => this.queryContacts()}
+          fetchContactStaleness={() => this.queryContactStaleness()}
+          isNewLogin={() => this.queryNewLogin()}
         />
       </div>
     );

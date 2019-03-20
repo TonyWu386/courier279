@@ -15,13 +15,9 @@ A secure and trustless messaging and sharing application that respects the priva
 - Create and manage contacts, and configure sharing permissions among contacts
 
 Courier279 offers a unique 3-D user expirence:
-- Centers on an immersive first-person 3-D operating environment (large three.js canvas within React)
+- Centers on an immersive first-person 3-D operating environment
 - Interactions such as viewing messages, contacts, incoming files, etc. will be done in this 3-D environment
 - Customize your own operating environment with flexible tools, and visit other users' customized environments
-
-Backend: Express + MySQL
-
-Frontend: React + three.js canvas
 
 ### Beta Features
 
@@ -41,11 +37,22 @@ Frontend: React + three.js canvas
 
 ### Technologies
 
-- Heavy use of the javascript port of the TweetNaCl crypto library
+- Heavy frontend use of the *TweetNaCL* crypto library for end-to-end encryption
+  - NaCL box format (ECDH) for direct messages
+  - NaCL secretbox format (shared secret key) for group messages, files
 
-- Frontend will rely heavily on the three.js library to handle 3-D rendering
+- Trustless end-to-end encryption and key management
+  - Client-generated EC keypairs, encrypted with Scrypt digest of user password
+  - Independent hash sent for server authenication
+  - Client-based seperate-header encryption for flexible file sharing
 
-- Express backend and a mySQL backend for data storage (possibly mariaDB)
+- Frontend use of *React* to manage client state, server communication, and the main 3-D UI
+
+- The UI centers around a 3-D *three.js* canvas to provide an unique user expirence
+
+- Backend composed of an *Express* server with a *MySQL* database for data storage
+
+- Automated deployment via Docker
 
 ### Challenges expected
 

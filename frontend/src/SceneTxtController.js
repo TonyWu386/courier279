@@ -103,6 +103,8 @@ export default class SceneTxtController extends React.Component {
   }
 
   handleLock(event) {
+    // just in case
+    if (!this.props.isUserLogin()) return;
     // be very careful with immutability
     this.setState((old) => ({
       // XOR with 1, should act as a toggle
@@ -378,6 +380,7 @@ export default class SceneTxtController extends React.Component {
         <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
+
         <div id="tempcontacts">{this.state.activeContact >= 0 ? 
         this.state.contactList[this.state.activeContact].TargetUsername + " is the active contact"
         : 'No Active Contact'}</div>
@@ -387,16 +390,21 @@ export default class SceneTxtController extends React.Component {
         <div id="liveinfo">{this.state.staleLiveInfo ? this.state.liveInfo 
           : 'Send messages to known usernames using the box at the top.'}</div>
         
-        <SceneTxt 
-          txt={() => this.queryTxt()}
-          movementsIn={() => this.queryMovement()}
-          newMsg={() => this.queryNewMessages()}
-          getRenderStaleness={() => this.queryRenderStaleness()}
-          updateRenderStaleness ={(stale) => this.updateRenderStaleness(stale)}
-          fetchContact={() => this.queryContacts()}
-          fetchContactStaleness={() => this.queryContactStaleness()}
-          isNewLogin={() => this.queryNewLogin()}
-        />
+        <div id='scene-container'>
+          {!(this.props.isUserLogin()) &&
+            <div id='disabled-warn'>Login to enable interaction...</div>
+          }
+          <SceneTxt 
+            txt={() => this.queryTxt()}
+            movementsIn={() => this.queryMovement()}
+            newMsg={() => this.queryNewMessages()}
+            getRenderStaleness={() => this.queryRenderStaleness()}
+            updateRenderStaleness ={(stale) => this.updateRenderStaleness(stale)}
+            fetchContact={() => this.queryContacts()}
+            fetchContactStaleness={() => this.queryContactStaleness()}
+            isNewLogin={() => this.queryNewLogin()}
+          />
+        </div>
       </div>
     );
   }

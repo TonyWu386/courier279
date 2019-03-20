@@ -62,4 +62,6 @@ curl --header 'Content-Type: application/json' --request POST --data '{"encrypte
 printf "\n\n"
 
 curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/group/session/1/
+printf "\nFrom another user\n"
+curl --header 'Content-Type: application/json' -b cookiefileB localhost:3001/api/group/session/1/
 printf "\nDone\n"

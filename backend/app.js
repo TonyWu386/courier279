@@ -558,7 +558,7 @@ app.get('/api/group/session/:id/', isAuthenticated, function (req, res, next) {
 */
 app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
 
-    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username FROM UserToSession us
+    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username, us.EncryptedSessionKey, us.Nonce FROM UserToSession us
                 INNER JOIN Sessions s
                 ON us.Sessions_SessionId = s.SessionId
                 INNER JOIN Users u
@@ -575,6 +575,8 @@ app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
                 'SessionType' : element.SessionType,
                 'SessionStartDate' : element.SessionStartDate,
                 'OwnerUsername' : element.Username,
+                'EncryptedSessionKey' : element.EncryptedSessionKey,
+                'Nonce' : element.Nonce,
             });
         });
 

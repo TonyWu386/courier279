@@ -8,83 +8,113 @@ import util from 'tweetnacl-util';
 import SceneTxtCtrl from './SceneTxtController.js';
 import LoginPortal from './LoginPortal.js';
 
-// TODO need to sort through and delete stuff we don't actually need
-class PubKeyObj extends React.Component {
+import axios from 'axios';
+const server = "http://localhost:3000";
+
+
+
+class GroupSession extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      public_key: null,
-      private_key: null,
-      pubkey: null,
-      privkey: null,
+      username: 'place filler',
+      sessionId: 'place filler',
     };
   }
 
-  generateKeyPair() {
-    const keypair = nacl.box.keyPair();
-    this.setState({
-      public_key: keypair.publicKey,
-      private_key: keypair.secretKey,
-    });
+  handleInputChange(event, field) {
+    if (field == 'u') {
+      this.setState({
+        username: event.target.value,
+      });
+    } else {
+      this.setState({
+        sessionId: event.target.value,
+      });
+    }
   }
 
-  render() {
-    let public_key = (this.state.public_key)? util.encodeBase64(this.state.public_key) : '';
-    let private_key = (this.state.private_key)? util.encodeBase64(this.state.private_key) : '';
-
-    return(
-      <div>
-        <button onClick={() => this.generateKeyPair()}>Generate EC Keypair</button>
-        <h2>Pub Key Encryption Demo</h2>
-        <h6>Key Pub {public_key}</h6>
-        <h6>Key Priv {private_key}</h6>
-      </div>
-    );
-  }
-}
-
-
-
-class CryptObj extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      input_value: 'place filler',
-      output_value: 'place filler',
-    };
-  }
-
-  handleInputChange(event) {
-    this.setState({
-      input_value: event.target.value,
-    });
-  }
-
-  handleComClick() {
-    const key = nacl.hash(util.decodeUTF8(this.props.password)).slice(0, nacl.secretbox.keyLength);
-    const message = util.decodeUTF8(this.state.input_value);
+  createNewSession() {
+    // Generate a random key for this group session, then encrypt it for ourselves
+    const session_key = nacl.randomBytes(nacl.secretbox.keyLength);
     const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-    const ciphertext = nacl.secretbox(message, nonce, key);
+    const pubkey = this.props.getUserPubKey();
+    const privkey = this.props.getUserPrivKey();
+    const encrypted_session_key = nacl.box(session_key, nonce, pubkey, privkey);
 
-    this.setState({
-      output_value: util.encodeBase64(ciphertext),
-    }, () => {
-      this.props.handleCryptResult(this.state.output_value);
+    // Push it to the server
+    axios.post(server + "/api/group/session/", {
+      encrypted_session_key : util.encodeBase64(encrypted_session_key),
+      nonce : util.encodeBase64(nonce),
+    })
+    .then((response) => {
+      this.setState({sessionId : response.data.sessionId});
+
+      // This stores the group session key gobally, so it can be used for this session's messages later
+      this.props.addGroupSessionCryptData(response.data.sessionId, session_key);
+
+      console.log("Created new group session with id " + response.data.sessionId);
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
+
+  addUserToExisting() {
+    if ((!this.state.username) || (!this.state.sessionId)) {
+      console.log("Need username and sessionId inputs");
+      return;
+    }
+
+    const sessionId = this.state.sessionId;
+    const username = this.state.username;
+    const pubkey = this.props.getUserPubKey();
+    const privkey = this.props.getUserPrivKey();
+
+    let session_key = null;
+
+    axios.get(server + "/api/group/session/" + sessionId + "/")
+    .then((response) => {
+      if (response.data.OwnerUsername != this.props.queryLoginName()) throw new Error("Not owner");
+
+      const nonce = util.decodeBase64(response.data.Nonce);
+      const encrypted_session_key = util.decodeBase64(response.data.EncryptedSessionKey);
+
+      session_key = nacl.box.open(encrypted_session_key, nonce, pubkey, privkey);
+
+      // This stores the group session key gobally, so it can be used for this session's messages later
+      this.props.addGroupSessionCryptData(sessionId, session_key);
+      
+      return axios.get(server + "/api/crypto/pubkey/?username=" + username);
+    }).then((res) => {
+      const target_pubkey = util.decodeBase64(res.data.pubkey);
+      const target_nonce = nacl.randomBytes(nacl.box.nonceLength);
+
+      // We re-encrypt the group session key for the target user, and send it to the server
+      const target_encrypted_session_key = nacl.box(session_key, target_nonce, target_pubkey, privkey);
+
+      return axios.post(server + "/api/group/session/" + sessionId + "/adduser/", {
+        'encrypted_session_key': util.encodeBase64(target_encrypted_session_key),
+        'nonce': util.encodeBase64(target_nonce),
+        'username_to_add': username,
+      });
+    }).then((res) => {
+      console.log("Success added user to existing session");
+    }).catch((err) => {
+      console.log(err);
     });
   }
 
   render() {
-    let ciphertext = this.state.output_value;
-
     return (
       <div>
         <h2>Symm Encryption Demo</h2>
-        <button onClick={() => this.handleComClick()}>Encrypt Symm</button>
-        <h4>{ciphertext}</h4>
-        <form onSubmit={this.handleSubmit}>
-          Symm Encrypt Input
-          <input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
-        </form>
+        <button onClick={() => this.createNewSession()}>New Session</button>
+        <button onClick={() => this.addUserToExisting()}>Add To Existing</button>
+        <h4>Username</h4>
+        <input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i,'u')}/>
+        <h4>SessionID</h4>
+        <input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i,'s')}/>
       </div>
     )
   };
@@ -110,7 +140,7 @@ class Webapp extends React.Component {
       staleErr: false,
       feedback: '',
       staleFeed: false,
-
+      group_sessions: {},
       // when set to true, propagate down things that should happen
       newLogin: false,
       loginObservers: [],
@@ -212,6 +242,13 @@ class Webapp extends React.Component {
     return this.state.privkey;
   }
 
+  addGroupSessionCryptData(sessionId, key) {
+    this.setState({
+      group_sessions : this.state.group_sessions[sessionId] = key,
+    });
+    console.log("Group sessions ", this.state.group_sessions);
+  }
+
   setCryptData(pubkey, privkey) {
     this.setState({
       pubkey: pubkey,
@@ -259,6 +296,14 @@ class Webapp extends React.Component {
               getUserName={() => this.queryLoginName()}
               addNewLoginObserver={(func) => this.watchNewLogin(func)}
             />
+        </div>
+        <div>
+          <GroupSession
+            getUserPubKey={() => this.queryUserPubKey()}
+            getUserPrivKey={() => this.queryUserPrivKey()}
+            queryLoginName={() => this.queryLoginName()}
+            addGroupSessionCryptData={(sessionId, key) => this.addGroupSessionCryptData(sessionId, key)}
+          />
         </div>
       </div>
     );

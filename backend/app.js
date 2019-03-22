@@ -514,10 +514,47 @@ app.get('/api/users/', isAuthenticated, function (req, res, next) {
 });
 
 
-/*  For getting the usernames in a particular session
+
+
+/*  For getting info about a group session
     GET /api/group/session/:id/
 */
 app.get('/api/group/session/:id/', isAuthenticated, function (req, res, next) {
+
+    let sessionId = parseInt(req.params.id);
+
+    if (isNaN(sessionId)) return res.status(400).contentType("text/plain").end("Did not get required data");
+
+    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username, us.EncryptedSessionKey, us.Nonce
+                FROM UserToSession us
+                INNER JOIN Sessions s
+                    ON us.Sessions_SessionId = s.SessionId
+                INNER JOIN Users u
+                    ON s.Owner_UserId = u.UserId
+                WHERE us.Users_UserId = ? AND s.SessionId = ?`,
+    [req.userId, sessionId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(403).contentType("text/plain").end("Session doesn't exist or user does not have access");
+
+        const session = rows[0];
+
+        return res.json({
+            'SessionId' : session.SessionId,
+            'SessionType' : session.SessionType,
+            'SessionStartDate' : session.SessionStartDate,
+            'OwnerUsername' : session.Username,
+            'EncryptedSessionKey' : session.EncryptedSessionKey,
+            'Nonce' : session.Nonce,
+        });
+    });
+});
+
+
+
+/*  For getting the usernames in a particular session
+    GET /api/group/session/:id/usernames/
+*/
+app.get('/api/group/session/:id/usernames/', isAuthenticated, function (req, res, next) {
     let sessionId = parseInt(req.params.id);
 
     if (isNaN(sessionId)) return res.status(400).contentType("text/plain").end("Did not get required data");
@@ -586,6 +623,7 @@ app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
 
 
 
+
 /*
     Checks for
     body.username_to_add
@@ -624,10 +662,11 @@ app.post('/api/group/session/:id/adduser/', sanitizeUserToSession, isAuthenticat
             if (!rows.length) return res.status(400).contentType("text/plain").end("Group session not found");
             if (rows[0].Owner_UserId != req.userId) return res.status(403).contentType("text/plain").end("Not the owner of this group session");
 
-            conn.query(`INSERT INTO UserToSession(Sessions_SessionId, Users_UserId, EncryptedSessionKey, Nonce)
+            conn.query(`INSERT IGNORE INTO UserToSession(Sessions_SessionId, Users_UserId, EncryptedSessionKey, Nonce)
                         VALUES (?,?,?,?)`,
             [sessionId, userId_to_add, encrypted_session_key, nonce], (err, rows) => {
                 if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+                if (!rows.affectedRows) return res.status(400).contentType("text/plain").end("Target user is already in session");
 
                 return res.json("Added user " + username_to_add + " to session with id " + sessionId);
             });
@@ -687,6 +726,48 @@ app.post('/api/group/session/', sanitizeNewSession, isAuthenticated, function (r
                     "sessionId" : sessionId,
                 });
             });
+        });
+    });
+});
+
+
+
+/*
+    Checks for
+    body.encrypted_body
+    body.nonce
+*/
+let sanitizeGroupMessage = function(req, res, next) {
+    if (!validator.isBase64(req.body.encrypted_body)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
+    next();
+}
+
+/*  For pushing a new group message to the server
+    POST /api/messages/group/:id/
+*/
+app.post('/api/messages/group/:id/', sanitizeGroupMessage, isAuthenticated, function (req, res, next) {
+    const sessionId = req.params.id;
+
+    let encrypted_body = req.body.encrypted_body;
+    let nonce = req.body.nonce;
+
+    if ((!sessionId) || (!encrypted_body) || (!nonce)) return res.status(400).contentType("text/plain").end("Did not get required data");
+
+    let senderId = req.userId;
+
+    conn.query(`SELECT Users_UserId
+                From UserToSession
+                WHERE Sessions_SessionId = ? AND Users_UserId = ?;`,
+    [sessionId, senderId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(403).contentType("text/plain").end("User is not part of this session");
+
+        conn.query(`INSERT INTO GroupMessages(Sessions_SessionId, EncryptedText, Sender_UserId, Nonce) VALUES (?,?,?,?)`,
+        [sessionId, encrypted_body, senderId, nonce], (err, rows) => {
+            if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+            return res.json("sent message to group session " + sessionId);
         });
     });
 });

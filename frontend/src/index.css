@@ -57,6 +57,25 @@ ol, ul {
   align-self: center;
 }
 
+#disabled-warn {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  font: 48px "Century Gothic", Futura, sans-serif;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  background-color: rgba(25,25,5, 0.7);
+  display: flex;
+  flex-direction: row;
+  z-index: 101;
+  text-align: center;
+  align-items: center;
+  justify-content: center;
+
+}
+
 #content-msg {
   width: 50%
 }

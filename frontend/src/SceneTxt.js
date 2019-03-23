@@ -83,12 +83,21 @@ export default class SceneTxt extends React.Component {
     // == Handlers for the floor ==
 
     let floor = new THREE.PlaneGeometry(200, 200, 10, 10);
-    let floormaterial = new THREE.MeshBasicMaterial({color: 0xfffaaa});
-    // takes radians
-    floor.rotateX(- Math.PI / 2);
-    floor.translate(0,-8,0);
-    let floormesh = new THREE.Mesh(floor, floormaterial);
-    scene.add(floormesh);
+    new THREE.TextureLoader().load("texture/floorbasic.jpeg", function(texturef) {
+      texturef.wrapS = THREE.RepeatWrapping;
+      texturef.wrapT = THREE.RepeatWrapping;
+      texturef.repeat.set(1,1);
+
+      let floormaterial = new THREE.MeshBasicMaterial({map: texturef});
+
+      texturef.needsUpdate = true;
+      // takes radians
+      floor.rotateX(- Math.PI / 2);
+      floor.translate(0,-3,0);
+      let floormesh = new THREE.Mesh(floor, floormaterial);
+      scene.add(floormesh);
+      console.log("loaded floor");
+    });
 
     // add basic elements now
 
@@ -125,10 +134,11 @@ export default class SceneTxt extends React.Component {
 
   animate() {
     // movement updates
+    if (this.state.movementsIn().left) this.camera.rotateY(0.05);
+    if (this.state.movementsIn().right) this.camera.rotateY(-0.05);
+
     if (this.state.movementsIn().forward) this.camera.translateZ(-0.1);
-    if (this.state.movementsIn().left) this.camera.translateX(-0.1);
     if (this.state.movementsIn().backward) this.camera.translateZ(0.1);
-    if (this.state.movementsIn().right) this.camera.translateX(0.1);
 
     // txt updates
     
@@ -163,7 +173,12 @@ export default class SceneTxt extends React.Component {
       console.log("Got and rendered new messages");
     }
 
-    // TODO removal case
+    this.state.createdSceneObj.forEach(function(cubemsg) {
+      // slow rotation of sent messages.
+      cubemsg.rotation.y += 0.001;
+    }.bind(this));
+
+    // removal case
 
     this.renderScene();
     this.frameId = window.requestAnimationFrame(this.animate);
@@ -182,22 +197,35 @@ export default class SceneTxt extends React.Component {
     )
   }
 
-  randomDarkColor() {
+  randomLightColor() {
     // Thanks, stackoverflow #1484514
-    let possible = '0123456789ABCDEF';
-    let finalC = '0xfff';
-    for (let index = 0; index < 3; index++) { 
-      finalC += possible[Math.floor(Math.random() * 16)];
+    let possible = '6789abcdef';
+    let finalC = '#';
+    for (let index = 0; index < 6; index++) { 
+      finalC += possible[Math.floor(Math.random() * 10)];
     }
     return finalC;
   }
 
   drawNewMsg() {
+    // Remove old messages, we need them not.
+    let temp = this.state.createdSceneObj;
+    this.setState({
+      createdSceneObj : [],
+    }, () => {
+      temp.forEach(function(cubemsg) {
+        // Properly dispose of all the old  elements to avoid memory leaks
+        this.scene.remove(cubemsg);
+        cubemsg.geometry.dispose();
+        cubemsg.material.map.dispose();
+        cubemsg.material.dispose();
+    }.bind(this))});
+
     // we do not want overlapped cubes, so move em
     let newOffset = 0;
     this.props.newMsg().forEach(function(toRender) {
       let geom = new THREE.BoxGeometry(4, 4, 4);
-      let mat = new THREE.MeshBasicMaterial({ color : this.randomDarkColor() });
+      let mat = new THREE.MeshBasicMaterial({ color : this.randomLightColor() });
       let newcube = new THREE.Mesh(geom, mat);
 
       this.tempctx.clearRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
@@ -228,15 +256,14 @@ export default class SceneTxt extends React.Component {
 
           newOffset += 5;
           this.scene.add(newcube);
+          this.setState((old) => ({
+            createdSceneObj : [...old.createdSceneObj, newcube],
+          }));
           console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
         }.bind(this), undefined, function (err) {
           console.error("Something bad happened while loading texture!");
         });
       }.bind(this));
-
-      this.setState((old) => ({
-        createdSceneObj : [...old.createdSceneObj, newcube],
-      }));
 
     }.bind(this));
 

@@ -43,6 +43,8 @@ export default class SceneTxtController extends React.Component {
       contactList: [], // list of contact objects
       activeContact: -1, // currently none
 
+      staleGroupRender: false,
+      toBeGroupRendered: [], // {sender, text, group ID}
       staleGroups: false,
       groupSessions: {}, // list of group message sessions
       activeGroup: -1, // currently none
@@ -112,7 +114,6 @@ export default class SceneTxtController extends React.Component {
     if (this.props.isUserLogin()) {
       // handle pushing the new MSG to db by calling the helper below
       this.pushUserMessage();
-      console.log('says ', this.state.existingMsg);
     } else {
       this.setState({
         staleLiveInfo: true,
@@ -120,6 +121,20 @@ export default class SceneTxtController extends React.Component {
       });
     }
   }
+
+  handleGroupMessageAdd(e) {
+    // Basic frontend check that non-auth users can't do anything
+    if (this.props.isUserLogin()) {
+      // handle pushing the new MSG to db by calling the helper below
+      this.pushGroupMessage();
+    } else {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "You must be logged in to send messages",
+      });
+    }
+  }
+  
 
   handleLock(event) {
     // just in case
@@ -284,16 +299,9 @@ export default class SceneTxtController extends React.Component {
       // and store the result so they can be drawn
       const ecdh_shared_secret = nacl.box.before(target_pubkey, this.props.getUserPrivKey());
 
-      let msg_str = '';
       let newMessage = [];
       response.data.forEach(msg => {
         const decrypted_text = nacl.box.open.after(util.decodeBase64(msg.EncryptedText), util.decodeBase64(msg.Nonce), ecdh_shared_secret);
-
-        msg_str += "ID " + msg.DirectMessageId;
-        msg_str += " :Decrypted text " + util.encodeUTF8(decrypted_text);
-        msg_str += " :Sender " + msg.SenderUsername;
-        msg_str += " :Target " + msg.ReceiverUsername;
-        msg_str += " :Nonce " + msg.Nonce;
 
         // set stuff that needs to be passed down to renderer
         newMessage.push({sender : msg.SenderUsername, text : " " + util.encodeUTF8(decrypted_text)});
@@ -346,23 +354,23 @@ export default class SceneTxtController extends React.Component {
 
   // similar to contacts, load this on login
   fetchUserSessionList() {
-    // TODO Strange behaviour. Neither errors nor properly returns response
     axios.get(server + "/api/group/session/")
       .then((res) => {
         let temp = {};
         // copy over needed info on sessions user is part of
+        
         res.data.forEach(function(session) {
           let nonce = util.decodeBase64(session.Nonce);
           let encrypted_session_key = util.decodeBase64(session.EncryptedSessionKey);
-
+          // NULL if authentication fails. Happens on unowned sessions
           let session_key = nacl.box.open(encrypted_session_key, nonce, 
-            this.props.pubkey(), this.props.privkey());
+            this.props.getUserPubKey(), this.props.getUserPrivKey());
           temp[session.SessionId] = session_key;
         }.bind(this));
 
         let active = -1;
         // temp.sort(); // sort into a logical ordering
-        if (temp.length > 0) active = 0;
+        if (Object.keys(temp).length > 0) active = Object.keys(temp)[0];
         this.setState({
           staleGroups: true,
           groupSessions: temp,
@@ -371,18 +379,66 @@ export default class SceneTxtController extends React.Component {
           // callback on the group messages to display
           // this.fetchGroupMessage()
         });
-        console.log("Response Session list is " + temp);
+        console.log("Fetch sessions success " + Object.keys(temp));
       }).catch((err) => {
         console.error(err.response.data);
       });
   }
 
   pushGroupMessage() {
-    // TODO stub
+    // Figure out the active group
+    if (this.state.activeGroup == -1) return;
+    let targetGroupKey = this.state.groupSessions[this.state.activeGroup];
+    if (targetGroupKey === null) { console.error("Could not send. Error obtaining Key."); return;}
+
+    // TODO is there an elegant way to switch between group/contact setting?
+    // this reuses the same message sending field as contacts
+    // TODO encrypt the messages & stuff
+    let encrypted_message = this.state.txt;
+
+    axios.post(server + "/api/messages/group/" + this.state.activeGroup + "/", {
+      encrypted_body : util.encodeBase64(encrypted_message),
+      nonce : util.encodeBase64("Change this nonce"),
+
+    }).then((res) => {
+
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Sent Message to Group" + this.state.activeGroup,
+      });
+      this.fetchGroupMessage();
+      console.log(res.data);
+    }).catch((err) => {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Group Message failure: "  + (err.response.data || err.response || err),
+      });
+      console.error(err.response.data);
+    });
   }
 
   fetchGroupMessage() {
-    // TODO stub
+    // Figure out the active group
+    if (this.state.activeGroup == -1) return;
+    let targetGroupKey = this.state.groupSessions[this.state.activeGroup];
+    if (targetGroupKey === null) { console.error("Could not get. Error obtaining Key."); return;}
+
+    axios.get(server + "/api/messages/group/" + this.state.activeGroup + "/")
+    .then((res) => {
+      // TODO message decryption
+      let newGroupMessage = [];
+      res.data.forEach(msg => {
+        let decryptedText = msg.EncryptedText;
+
+         // TODO set render staleness and stuff
+        newGroupMessage.push({sender : msg.Username, text : decryptedText, GroupID : msg.GroupMessageId});
+      });      
+
+      console.log("Got following group messages on" + this.state.activeGroup + " - " + res.data);
+    }).catch((err) => {
+      
+      console.log("Messed up while getting group msgs - " + err.response.data);
+    });
   }
 
   createNewSession() {
@@ -536,7 +592,8 @@ export default class SceneTxtController extends React.Component {
 
         <input id="content-msg" type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
         <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
-        <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>
+        <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Send to Contact</button>
+        <button class="btn" id="msg-add-group" onClick={(i) => this.handleGroupMessageAdd(i)}>Send to Group</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
 
         <div id="tempcontacts">{this.state.activeContact >= 0 ? 

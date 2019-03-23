@@ -393,12 +393,12 @@ export default class SceneTxtController extends React.Component {
 
     // TODO is there an elegant way to switch between group/contact setting?
     // this reuses the same message sending field as contacts
-    // TODO encrypt the messages & stuff
-    let encrypted_message = this.state.txt;
+    const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+    const encrypted_message = nacl.secretbox(nacl.decodeUTF8(this.state.txt), nonce, targetGroupKey);
 
     axios.post(server + "/api/messages/group/" + this.state.activeGroup + "/", {
       encrypted_body : util.encodeBase64(encrypted_message),
-      nonce : util.encodeBase64("Change this nonce"),
+      nonce : util.encodeBase64(nonce),
 
     }).then((res) => {
 
@@ -425,10 +425,12 @@ export default class SceneTxtController extends React.Component {
 
     axios.get(server + "/api/messages/group/" + this.state.activeGroup + "/")
     .then((res) => {
-      // TODO message decryption
+
       let newGroupMessage = [];
       res.data.forEach(msg => {
-        let decryptedText = msg.EncryptedText;
+        const nonce = nacl.decodeBase64(msg.Nonce);
+        const encrypted_message = nacl.decodeBase64(msg.EncryptedText);
+        const decryptedText = nacl.secretbox.open(encrypted_message, nonce, targetGroupKey);
 
          // TODO set render staleness and stuff
         newGroupMessage.push({sender : msg.Username, text : decryptedText, GroupID : msg.GroupMessageId});

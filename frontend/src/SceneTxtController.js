@@ -28,6 +28,8 @@ export default class SceneTxtController extends React.Component {
       txt: '',
       target: '',
       contactField: '',
+      sessionUname: '',
+      sessionId: '',
       movements: {forward: false, backward: false, right: false, left: false},
       isCameraLocked: true,
       hasBeenChanged: false, // currently unused. Will want later
@@ -41,7 +43,8 @@ export default class SceneTxtController extends React.Component {
       contactList: [], // list of contact objects
       activeContact: -1, // currently none
 
-      groupList: [], // list of group message sessions
+      staleGroups: false,
+      groupSessions: {}, // list of group message sessions
       activeGroup: -1, // currently none
     }
   }
@@ -56,8 +59,9 @@ export default class SceneTxtController extends React.Component {
       this.setState({
         newLoginRender : true,
       });
-      // fetch contacts on login.
+      // fetch contacts and groups on login.
       this.fetchUserContactList();
+      this.fetchUserSessionList();
     }.bind(this));
   }
 
@@ -73,6 +77,18 @@ export default class SceneTxtController extends React.Component {
     }, () => {
       console.log('says ', this.state.txt);
     });
+  }
+
+  handleSessionInputChange(event, field) {
+    if (field == 'u') {
+      this.setState({
+        sessionUname: event.target.value,
+      });
+    } else {
+      this.setState({
+        sessionId: event.target.value,
+      });
+    }
   }
 
   handleContactChange(event) {
@@ -134,23 +150,23 @@ export default class SceneTxtController extends React.Component {
     if (!this.state.isCameraLocked && this.state.activeContact != -1) {
       let activeC = this.state.activeContact;
       switch(event.key) {
-        case 'q': 
+        case 'e': 
                   if (activeC < this.state.contactList.length - 1) {
                     this.setState({
                       activeContact : activeC + 1,
                     }, () => {
                       this.fetchUserMessages();
-                      console.log('Q up' + this.state.activeContact);
+                      console.log('E up' + this.state.activeContact);
                     }); 
                   } break;
 
-        case 'e': 
+        case 'q': 
                   if (activeC > 0) {
                     this.setState({
                       activeContact : activeC - 1,
                     }, () => {
                       this.fetchUserMessages();
-                      console.log('E up' + this.state.activeContact);
+                      console.log('Q up' + this.state.activeContact);
                     });
                   } break;
         default:
@@ -328,6 +344,134 @@ export default class SceneTxtController extends React.Component {
 
   }
 
+  // similar to contacts, load this on login
+  fetchUserSessionList() {
+    // TODO Strange behaviour. Neither errors nor properly returns response
+    axios.get(server + "/api/group/session/")
+      .then((res) => {
+        let temp = {};
+        // copy over needed info on sessions user is part of
+        res.data.forEach(function(session) {
+          let nonce = util.decodeBase64(session.Nonce);
+          let encrypted_session_key = util.decodeBase64(session.EncryptedSessionKey);
+
+          let session_key = nacl.box.open(encrypted_session_key, nonce, 
+            this.props.pubkey(), this.props.privkey());
+          temp[session.SessionId] = session_key;
+        }.bind(this));
+
+        let active = -1;
+        // temp.sort(); // sort into a logical ordering
+        if (temp.length > 0) active = 0;
+        this.setState({
+          staleGroups: true,
+          groupSessions: temp,
+          activeGroup : active,
+        }, () => {
+          // callback on the group messages to display
+          // this.fetchGroupMessage()
+        });
+        console.log("Response Session list is " + temp);
+      }).catch((err) => {
+        console.error(err.response.data);
+      });
+  }
+
+  pushGroupMessage() {
+    // TODO stub
+  }
+
+  fetchGroupMessage() {
+    // TODO stub
+  }
+
+  createNewSession() {
+    // Generate a random key for this group session, then encrypt it for ourselves
+    const session_key = nacl.randomBytes(nacl.secretbox.keyLength);
+    const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+    const pubkey = this.props.getUserPubKey();
+    const privkey = this.props.getUserPrivKey();
+    const encrypted_session_key = nacl.box(session_key, nonce, pubkey, privkey);
+
+    // Push it to the server
+    axios.post(server + "/api/group/session/", {
+      encrypted_session_key : util.encodeBase64(encrypted_session_key),
+      nonce : util.encodeBase64(nonce),
+    })
+    .then((response) => {
+      // TODO update the active list of group sessions
+
+
+      // This stores the group session key globally, so it can be used for this session's messages later
+      this.addGroupSessionCryptData(response.data.sessionId, session_key);
+
+      console.log("Created new group session with id " + response.data.sessionId);
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
+
+  addUserToExisting() {
+    if ((!this.state.sessionUname) || (!this.state.sessionId)) {
+      console.log("Need username and sessionId inputs");
+      return;
+    }
+
+    const sessionId = this.state.sessionId;
+    const username = this.state.sessionUname;
+    const pubkey = this.props.getUserPubKey();
+    const privkey = this.props.getUserPrivKey();
+
+    let session_key = null;
+
+    axios.get(server + "/api/group/session/" + sessionId + "/")
+    .then((response) => {
+      if (response.data.OwnerUsername != this.props.getUserName()) {
+        this.setState({
+          staleLiveInfo: true,
+          liveInfo: "You are not the owner of session #" + sessionId,
+        });
+      };
+
+      const nonce = util.decodeBase64(response.data.Nonce);
+      const encrypted_session_key = util.decodeBase64(response.data.EncryptedSessionKey);
+
+      session_key = nacl.box.open(encrypted_session_key, nonce, pubkey, privkey);
+
+      // This stores the group session key globally, so it can be used for this session's messages later
+      this.addGroupSessionCryptData(sessionId, session_key);
+      
+      return axios.get(server + "/api/crypto/pubkey/?username=" + username);
+    }).then((res) => {
+      const target_pubkey = util.decodeBase64(res.data.pubkey);
+      const target_nonce = nacl.randomBytes(nacl.box.nonceLength);
+
+      // We re-encrypt the group session key for the target user, and send it to the server
+      const target_encrypted_session_key = nacl.box(session_key, target_nonce, target_pubkey, privkey);
+
+      return axios.post(server + "/api/group/session/" + sessionId + "/adduser/", {
+        'encrypted_session_key': util.encodeBase64(target_encrypted_session_key),
+        'nonce': util.encodeBase64(target_nonce),
+        'username_to_add': username,
+      });
+    }).then((res) => {
+      // TODO I am fairly certain this produces a change in the session key. Refetch
+      console.log("Successfully added user to existing session");
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
+  addGroupSessionCryptData(sessionId, key) {
+    this.setState(oldSessions => ({
+      groupSessions : {
+        ...oldSessions.groupSessions,
+        [sessionId]: key},
+    }));
+    console.log("Group sessions ", this.state.groupSessions);
+  }
+
   queryTxt() {
     return this.state.txt
   }
@@ -380,6 +524,16 @@ export default class SceneTxtController extends React.Component {
         <input id="contact-type" type="text" value={this.state.contactField} onChange={(i) => this.handleContactAddChange(i)}/>
         <button class="btn" id="contact-add" onClick={() => this.updateUserContactList()}>Add a contact</button>
         <br />
+
+        <h2>Session Management</h2>
+        <button onClick={() => this.createNewSession()}>New Session</button>
+        <button onClick={() => this.addUserToExisting()}>Add User To Existing</button>
+        <h4>Username</h4>
+        <input type="text" value={this.state.sessionUname} onChange={(i) => this.handleSessionInputChange(i,'u')}/>
+        <h4>SessionID</h4>
+        <input type="text" value={this.state.sessionId} onChange={(i) => this.handleSessionInputChange(i,'s')}/>
+        <br />
+
         <input id="content-msg" type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
         <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Add</button>

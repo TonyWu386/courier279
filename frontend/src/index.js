@@ -50,7 +50,7 @@ class GroupSession extends React.Component {
     .then((response) => {
       this.setState({sessionId : response.data.sessionId});
 
-      // This stores the group session key gobally, so it can be used for this session's messages later
+      // This stores the group session key globally, so it can be used for this session's messages later
       this.props.addGroupSessionCryptData(response.data.sessionId, session_key);
 
       console.log("Created new group session with id " + response.data.sessionId);
@@ -212,13 +212,6 @@ class Webapp extends React.Component {
     return this.state.privkey;
   }
 
-  addGroupSessionCryptData(sessionId, key) {
-    this.setState({
-      group_sessions : this.state.group_sessions[sessionId] = key,
-    });
-    console.log("Group sessions ", this.state.group_sessions);
-  }
-
   setCryptData(pubkey, privkey) {
     this.setState({
       pubkey: pubkey,
@@ -266,14 +259,6 @@ class Webapp extends React.Component {
               getUserName={() => this.queryLoginName()}
               addNewLoginObserver={(func) => this.watchNewLogin(func)}
             />
-        </div>
-        <div>
-          <GroupSession
-            getUserPubKey={() => this.queryUserPubKey()}
-            getUserPrivKey={() => this.queryUserPrivKey()}
-            queryLoginName={() => this.queryLoginName()}
-            addGroupSessionCryptData={(sessionId, key) => this.addGroupSessionCryptData(sessionId, key)}
-          />
         </div>
       </div>
     );

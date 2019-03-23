@@ -9,6 +9,9 @@ const crypto = require('crypto');
 const mysql = require('mysql');
 const cors = require('cors');
 const validator = require('validator');
+const multer = require('multer');
+
+let upload = multer({dest: path.join(__dirname, 'uploads')});
 
 
 const corsOptions = {
@@ -790,6 +793,15 @@ app.get('/api/messages/group/:id/', isAuthenticated, function (req, res, next) {
             return res.json(messages);
         });
     });
+});
+
+
+
+app.post('/api/upload/', upload.single("encrypted_file"), (req, res, next) => {
+    console.log(req);
+    let imageFile = req.file;
+    let nonce = req.nonce;
+    return res.json("Success");
 });
 
 

@@ -122,6 +122,75 @@ class GroupSession extends React.Component {
 
 
 
+class FileUp extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state ={
+        file: null
+    };
+    this.onFormSubmit = this.onFormSubmit.bind(this);
+    this.onChange = this.onChange.bind(this);
+  }
+
+  onFormSubmit(e){
+    e.preventDefault();
+
+    function uploadFileAsync(file, callback) {
+      let reader = new FileReader();
+
+      reader.addEventListener("load", function () {
+        
+        // On very large file, encryption process can freeze up 3D canvas
+        // TODO maybe switch to web worker?
+        const key = nacl.randomBytes(nacl.secretbox.keyLength);
+        const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+        let encrypted_file = nacl.secretbox(new Uint8Array(reader.result), nonce, key);
+
+        const formData = new FormData();
+        formData.append('encrypted_file', new Blob([encrypted_file]));
+        formData.append('nonce', util.encodeBase64(nonce));
+        const config = {
+          headers: {
+            'content-type': 'multipart/form-data'
+          }
+        };
+
+        axios.post(server + "/api/upload/", formData, config)
+        .then((response) => {
+          console.log("The file is successfully uploaded");
+          callback(null, "The file is successfully uploaded");
+        }).catch((error) => {
+          console.log(error);
+          callback(error, null);
+        });
+      }, false);
+
+      reader.readAsArrayBuffer(file);
+    }
+
+    uploadFileAsync(this.state.file, (err, res) => {
+      if (err) console.log("ERROR CAUGHT");
+    });
+  }
+
+  onChange(e) {
+    this.setState({file:e.target.files[0]});
+  }
+
+  render() {
+    return (
+      <form onSubmit={this.onFormSubmit}>
+          <h1>File Upload</h1>
+          <input type="file" name="myFile" onChange={this.onChange} />
+          <button type="submit">Upload</button>
+      </form>
+    )
+  }
+}
+
+
+
+
 
 class Webapp extends React.Component {
   constructor(props) {
@@ -259,6 +328,9 @@ class Webapp extends React.Component {
               getUserName={() => this.queryLoginName()}
               addNewLoginObserver={(func) => this.watchNewLogin(func)}
             />
+        </div>
+        <div>
+          <FileUp/>
         </div>
       </div>
     );

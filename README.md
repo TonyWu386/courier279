@@ -39,12 +39,16 @@ Courier279 offers a unique 3-D user expirence:
 
 - Heavy frontend use of the *TweetNaCL* crypto library for end-to-end encryption
   - NaCL box format (ECDH) for direct messages
-  - NaCL secretbox format (shared secret key) for group messages, files
+  - NaCL secretbox format (shared secret key) for group messages and files, key distribution via NaCL box
 
 - Trustless end-to-end encryption and key management
-  - Client-generated EC keypairs, encrypted with Scrypt digest of user password
-  - Independent hash sent for server authenication
-  - Client-based seperate-header encryption for flexible file sharing
+  - Each user has a client-generated EC keypair
+    - Private key is encrypted with Scrypt digest of user password
+    - Independent hash of password sent for server authenication, preseving secrecy of the Scrypt digest
+  - Group message sessions use unique client-generated symmetric keys
+    - Symmetric keys re-encrypted with group members' public keys for secure distribution
+  - Files use client-side seperate-header encryption for flexible sharing
+    - Only symmetric key needs to be re-encrypted for sharing, eliminating unnecessary downloads
 
 - Frontend use of *React* to manage client state, server communication, and the main 3-D UI
 
@@ -58,7 +62,7 @@ Courier279 offers a unique 3-D user expirence:
 
 - Performance is expected to be an issue. There is much work to be performed on the client side between cryptographic work and 3-D rendering. Balancing responsiveness with having a full-featured application may take time.
 
-- TweetNaCl and three.js are libraries the team will have to learn independently. There is some familiarity with the structure of both libraries already, but there will still be a learning curve.
+- TweetNaCL and three.js are libraries the team will have to learn independently. There is some familiarity with the structure of both libraries already, but there will still be a learning curve.
 
 - Race conditions and synchronization may be an issue once we begin attempting to handle sharing between multiple users
 

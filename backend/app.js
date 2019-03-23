@@ -372,25 +372,23 @@ app.delete('/api/contacts/:id/', isAuthenticated, function (req, res, next) {
 
 
 
-
 /*
     Checks for
-    body.target_username
     body.encrypted_body
     body.nonce
 */
-let sanitizeDirectMessage = function(req, res, next) {
-    req.body.target_username = validator.escape(req.body.target_username);
+let sanitizeMessage = function(req, res, next) {
     if (!validator.isBase64(req.body.encrypted_body)) return res.status(400).end("bad input");
     if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
     next();
 }
 
+
 /*  For pushing a new direct message to the server
     POST /api/messages/direct/
 */
-app.post('/api/messages/direct/', sanitizeDirectMessage, isAuthenticated, function (req, res, next) {
-    let target_username = req.body.target_username;
+app.post('/api/messages/direct/', sanitizeMessage, isAuthenticated, function (req, res, next) {
+    let target_username = validator.escape(req.body.target_username);
     let encrypted_body = req.body.encrypted_body;
     let nonce = req.body.nonce;
 
@@ -626,24 +624,23 @@ app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
 
 /*
     Checks for
-    body.username_to_add
     body.encrypted_session_key
     body.nonce
 */
-let sanitizeUserToSession = function(req, res, next) {
-    req.body.username_to_add = validator.escape(req.body.username_to_add);
+let sanitizeEncryptedSessionKey = function(req, res, next) {
     if (!validator.isBase64(req.body.encrypted_session_key)) return res.status(400).end("bad input");
     if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
     next();
 }
 
+
 /*  Adds a new user to an existing group session
     POST /api/group/session/:id/adduser/
 */
-app.post('/api/group/session/:id/adduser/', sanitizeUserToSession, isAuthenticated, function (req, res, next) {
+app.post('/api/group/session/:id/adduser/', sanitizeEncryptedSessionKey, isAuthenticated, function (req, res, next) {
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
-    let username_to_add = req.body.username_to_add;
+    let username_to_add = validator.escape(req.body.username_to_add);
     let sessionId = parseInt(req.params.id);
 
     if ((!encrypted_session_key) || (!nonce) || (!username_to_add) || (isNaN(sessionId))) return res.status(400).contentType("text/plain").end("Did not get required data");
@@ -676,22 +673,12 @@ app.post('/api/group/session/:id/adduser/', sanitizeUserToSession, isAuthenticat
 
 
 
-/*
-    Checks for
-    body.encrypted_session_key
-    body.nonce
-*/
-let sanitizeNewSession = function(req, res, next) {
-    if (!validator.isBase64(req.body.encrypted_session_key)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
-    next();
-}
 
 /*  For starting a new group message session
     Calling user becomes the owner of the session
     POST /api/group/session/
 */
-app.post('/api/group/session/', sanitizeNewSession, isAuthenticated, function (req, res, next) {
+app.post('/api/group/session/', sanitizeEncryptedSessionKey, isAuthenticated, function (req, res, next) {
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
 
@@ -732,21 +719,12 @@ app.post('/api/group/session/', sanitizeNewSession, isAuthenticated, function (r
 
 
 
-/*
-    Checks for
-    body.encrypted_body
-    body.nonce
-*/
-let sanitizeGroupMessage = function(req, res, next) {
-    if (!validator.isBase64(req.body.encrypted_body)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
-    next();
-}
+
 
 /*  For pushing a new group message to the server
     POST /api/messages/group/:id/
 */
-app.post('/api/messages/group/:id/', sanitizeGroupMessage, isAuthenticated, function (req, res, next) {
+app.post('/api/messages/group/:id/', sanitizeMessage, isAuthenticated, function (req, res, next) {
     const sessionId = req.params.id;
 
     let encrypted_body = req.body.encrypted_body;
@@ -768,6 +746,48 @@ app.post('/api/messages/group/:id/', sanitizeGroupMessage, isAuthenticated, func
             if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
             return res.json("sent message to group session " + sessionId);
+        });
+    });
+});
+
+
+
+/*  For the group messages attached to a group session
+    GET /api/messages/group/:id/
+*/
+app.get('/api/messages/group/:id/', isAuthenticated, function (req, res, next) {
+    const sessionId = req.params.id;
+
+    if (!sessionId) return res.status(400).contentType("text/plain").end("Did not get required sessionId");
+
+    conn.query(`SELECT Users_UserId
+                FROM UserToSession
+                WHERE Sessions_SessionId = ? AND Users_UserId = ?`,
+    [sessionId, req.userId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(403).contentType("text/plain").end("Session does not exist or user is not part of it");
+    
+        conn.query(`SELECT gm.GroupMessageId, u.Username, gm.EncryptedText, gm.Nonce, gm.DateSent
+                    FROM GroupMessages gm
+                    INNER JOIN Users u
+                    ON gm.Sender_UserID = u.UserId
+                    WHERE gm.Sessions_SessionId = ?;`,
+        [sessionId], (err, rows) => {
+            if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+            let messages = [];
+
+            rows.forEach(element => {
+                messages.push({
+                    'GroupMessageId' : element.GroupMessageId,
+                    'Username' : element.Username,
+                    'EncryptedText' : element.EncryptedText,
+                    'Nonce' : element.Nonce,
+                    'DateSent' : element.DateSent,
+                });
+            });
+
+            return res.json(messages);
         });
     });
 });

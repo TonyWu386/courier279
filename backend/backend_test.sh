@@ -84,6 +84,14 @@ printf "\n"
 
 printf "\nTesting actual sending of group messages...\n"
 curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_body":"YQ==", "nonce":"bg=="}' -b cookiefileA localhost:3001/api/messages/group/1/
+printf "\n"
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_body":"YQ==", "nonce":"bg=="}' -b cookiefileB localhost:3001/api/messages/group/1/
+printf "\nTrying to add a group message as a BAD user\n"
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_body":"YQ==", "nonce":"bg=="}' -b cookiefileD localhost:3001/api/messages/group/1/
+printf "\n"
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/messages/group/1/
+printf "\nTrying to get group session with BAD user...\n"
+curl --header 'Content-Type: application/json' -b cookiefileD localhost:3001/api/messages/group/1/
 printf "\nDone\n"
 
 rm cookiefile*

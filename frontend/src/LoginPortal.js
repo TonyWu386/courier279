@@ -13,9 +13,6 @@ export default class LoginPortal extends React.Component {
   constructor(props) {
     super(props)
 
-    // Properties should include
-
-
     this.state = {
       username : null,
       password : null,
@@ -59,7 +56,10 @@ export default class LoginPortal extends React.Component {
 
   // Sets up crypto for new user and creates an account
   EnrollUser() {
-    if ((!this.state.username) || (!this.state.password)) return;
+    if ((!this.state.username) || (!this.state.password)) {
+      this.props.loginError("Both fields are required for signing up");
+      return;
+    }
 
     this.setupNewUserCryptData((new_user_data) => {
       this.ServerSignup(new_user_data, this.state.username);
@@ -68,7 +68,10 @@ export default class LoginPortal extends React.Component {
 
 
   SigninUser() {
-    if ((!this.state.username) || (!this.state.password)) return;
+    if ((!this.state.username) || (!this.state.password)) {
+      this.props.loginError("Either username or password is missing.");
+      return;
+    }
 
     const server_auth_key = nacl.hash(util.decodeUTF8('server_auth' + this.state.password));
 
@@ -137,8 +140,8 @@ export default class LoginPortal extends React.Component {
       <div>
         Username<input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'u')}/>
         Password<input type="password" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'p')}/>
-        <button class="btn" onClick={() => this.EnrollUser()}>Enroll User</button>
-        <button class="btn" onClick={() => this.SigninUser()}>Signin User</button>
+        <button class="btn" onClick={() => this.EnrollUser()}>Enroll New User</button>
+        <button class="btn" onClick={() => this.SigninUser()}>Sign in as Existing User</button>
       </div>
     );
   }

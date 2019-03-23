@@ -127,12 +127,6 @@ class Webapp extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      history: [{
-        squares: Array(9).fill(null),
-      }],
-      xIsNext: true,
-      cryptResult: '',
-      // the below are actually used, can the above be deleted???
       pubkey: null,
       privkey: null,
       uname: '',
@@ -159,30 +153,6 @@ class Webapp extends React.Component {
       console.log("New login detected");
     }
     console.log("Update detected");
-  }
-
-  handleClick(i) {
-    const history = this.state.history;
-    const current = history[history.length - 1];
-    const squares = current.squares.slice();
-
-    squares[i] = (this.state.xIsNext)? 'X' : 'O';
-    this.setState({
-      history: history.concat([{
-        squares: squares,
-      }]),
-      xIsNext: !this.state.xIsNext,
-    });
-  }
-
-  handleCryptResult(result) {
-    this.setState({
-      cryptResult: result,
-    });
-  }
-
-  handleSubmit(event){
-    event.preventDefault();
   }
 
   // The below are funcs passed to login for communicating with us

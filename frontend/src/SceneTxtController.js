@@ -40,6 +40,9 @@ export default class SceneTxtController extends React.Component {
       staleContacts: false,
       contactList: [], // list of contact objects
       activeContact: -1, // currently none
+
+      groupList: [], // list of group message sessions
+      activeGroup: -1, // currently none
     }
   }
 
@@ -235,6 +238,7 @@ export default class SceneTxtController extends React.Component {
       this.setState({
         staleLiveInfo: true,
         liveInfo: "Added new contact",
+        contactField: '',
       });
       this.fetchUserContactList();
       console.log(res.data);
@@ -373,7 +377,7 @@ export default class SceneTxtController extends React.Component {
   render() {
     return (
       <div>
-        <input id="contact-type" type="text" value={this.state.value} onChange={(i) => this.handleContactAddChange(i)}/>
+        <input id="contact-type" type="text" value={this.state.contactField} onChange={(i) => this.handleContactAddChange(i)}/>
         <button class="btn" id="contact-add" onClick={() => this.updateUserContactList()}>Add a contact</button>
         <br />
         <input id="content-msg" type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>

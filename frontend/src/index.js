@@ -142,13 +142,21 @@ class FileUp extends React.Component {
         
         // On very large file, encryption process can freeze up 3D canvas
         // TODO maybe switch to web worker?
-        const key = nacl.randomBytes(nacl.secretbox.keyLength);
+        const random_key = nacl.randomBytes(nacl.secretbox.keyLength);
         const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-        let encrypted_file = nacl.secretbox(new Uint8Array(reader.result), nonce, key);
+        const encrypted_file = nacl.secretbox(new Uint8Array(reader.result), nonce, random_key);
 
         const formData = new FormData();
+
+        // ATTENTION change this to "box" encryption later, this is just for testing without logins
+        const encrypted_encryption_key_nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+        const encrypted_encryption_key = nacl.secretbox(random_key, encrypted_encryption_key_nonce, nacl.randomBytes(nacl.secretbox.keyLength));
+
         formData.append('encrypted_file', new Blob([encrypted_file]));
         formData.append('nonce', util.encodeBase64(nonce));
+        formData.append('encrypted_encryption_key', util.encodeBase64(encrypted_encryption_key));
+        formData.append('encrypted_encryption_key_nonce', util.encodeBase64(encrypted_encryption_key_nonce));
+
         const config = {
           headers: {
             'content-type': 'multipart/form-data'

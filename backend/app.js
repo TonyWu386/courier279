@@ -710,10 +710,10 @@ app.post('/api/group/session/', sanitizeEncryptedSessionKey, isAuthenticated, fu
 
                 conn.commit((err) => {
                     if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
-                });
 
-                return res.json({
-                    "sessionId" : sessionId,
+                    return res.json({
+                        "sessionId" : sessionId,
+                    });
                 });
             });
         });
@@ -797,11 +797,41 @@ app.get('/api/messages/group/:id/', isAuthenticated, function (req, res, next) {
 
 
 
-app.post('/api/upload/', upload.single("encrypted_file"), (req, res, next) => {
+
+app.post('/api/upload/', isAuthenticated, upload.single("encrypted_file"), (req, res, next) => {
     console.log(req);
-    let imageFile = req.file;
-    let nonce = req.nonce;
-    return res.json("Success");
+    let filePath = req.file.path;
+    let nonce = req.body.nonce;
+    let encrypted_encryption_key = req.body.encrypted_encryption_key;
+    let encrypted_encryption_key_nonce = req.body.encrypted_encryption_key_nonce;
+
+    conn.beginTransaction((err) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+        conn.query(`INSERT INTO Files(FileName, Path, Nonce, FileOwner_UserId) VALUES (?,?,?,?)`,
+        ["TODO foo", filePath, nonce, req.userId], (err, rows) => {
+            if (err) {
+                conn.rollback(() => {});
+                return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+            }
+
+            const fileId = rows.insertId;
+
+            conn.query(`INSERT INTO FileEncryptionHeaderStore(Files_FileId, Sharer_UserId, Sharee_UserId, Nonce, EncryptedEncryptionKey) VALUES (?,?,?,?,?)`,
+            [fileId, req.userId, req.userId, encrypted_encryption_key_nonce, encrypted_encryption_key], (err, rows) => {
+                if (err) {
+                    conn.rollback(() => {});
+                    return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+                }
+
+                conn.commit((err) => {
+                    if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+                    return res.json("Successfully uploaded file");
+                });
+            });
+        });
+    });
 });
 
 

@@ -798,18 +798,19 @@ app.get('/api/messages/group/:id/', isAuthenticated, function (req, res, next) {
 
 
 
-app.post('/api/upload/', isAuthenticated, upload.single("encrypted_file"), (req, res, next) => {
+app.post('/api/file/upload/', isAuthenticated, upload.single("encrypted_file"), (req, res, next) => {
     console.log(req);
     let filePath = req.file.path;
     let nonce = req.body.nonce;
     let encrypted_encryption_key = req.body.encrypted_encryption_key;
     let encrypted_encryption_key_nonce = req.body.encrypted_encryption_key_nonce;
+    let file_name = req.body.file_name;
 
     conn.beginTransaction((err) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
         conn.query(`INSERT INTO Files(FileName, Path, Nonce, FileOwner_UserId) VALUES (?,?,?,?)`,
-        ["TODO foo", filePath, nonce, req.userId], (err, rows) => {
+        [file_name, filePath, nonce, req.userId], (err, rows) => {
             if (err) {
                 conn.rollback(() => {});
                 return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -827,10 +828,57 @@ app.post('/api/upload/', isAuthenticated, upload.single("encrypted_file"), (req,
                 conn.commit((err) => {
                     if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
-                    return res.json("Successfully uploaded file");
+                    return res.json({'fileId' : fileId});
                 });
             });
         });
+    });
+});
+
+
+
+app.get('/api/file/:id/', isAuthenticated, (req, res, next) => {
+    console.log(req);
+    let fileId = req.params.id;
+
+    conn.query(`SELECT 1
+                FROM FileEncryptionHeaderStore
+                WHERE Files_FileId = ? AND Sharee_UserId = ?`,
+    [fileId, req.userId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(403).contentType("text/plain").end("User does not have permissions on this file");
+
+        conn.query(`SELECT Path FROM Files WHERE FileId = ?`, [fileId], (err, rows) => {
+            if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+            if (!rows.length) return res.status(400).contentType("text/plain").end("File does not exist");
+
+            const path = rows[0].Path;
+
+            return res.sendFile(path);
+        });
+    });
+});
+
+
+
+app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
+    console.log(req);
+    let fileId = req.params.id;
+
+    conn.query(`SELECT hs.Nonce, hs.EncryptedEncryptionKey, uc.PubKey
+                FROM FileEncryptionHeaderStore hs
+                INNER JOIN UserCredentials uc
+                ON uc.Users_UserId = hs.Sharer_UserId
+                WHERE hs.Files_FileId = ? AND hs.Sharee_UserId = ?`,
+    [fileId, req.userId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(403).contentType("text/plain").end("User does not have permissions on this file");
+
+        res.json({
+            'Nonce' : rows[0].Nonce,
+            'EncryptedEncryptionKey' : rows[0].EncryptedEncryptionKey,
+            'PubKey' : rows[0].PubKey,
+        })
     });
 });
 

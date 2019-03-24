@@ -126,72 +126,106 @@ class FileUp extends React.Component {
   constructor(props) {
     super(props);
     this.state ={
-        file: null
+        file: null,
+        file_name: null,
+        fileId: null,
     };
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.onChange = this.onChange.bind(this);
   }
 
-  onFormSubmit(e){
+  onFormSubmit(e, field){
     e.preventDefault();
 
-    function uploadFileAsync(file, callback) {
-      let reader = new FileReader();
+    if (field == 'u') {
+      // UPLOAD demo
 
-      reader.addEventListener("load", function () {
-        
-        // On very large file, encryption process can freeze up 3D canvas
-        // TODO maybe switch to web worker?
-        const random_key = nacl.randomBytes(nacl.secretbox.keyLength);
-        const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-        const encrypted_file = nacl.secretbox(new Uint8Array(reader.result), nonce, random_key);
+      function uploadFileAsync(file, file_name, callback) {
+        let reader = new FileReader();
 
-        const formData = new FormData();
+        reader.addEventListener("load", function () {
+          
+          // On very large file, encryption process can freeze up 3D canvas
+          // TODO maybe switch to web worker?
+          const random_key = nacl.randomBytes(nacl.secretbox.keyLength);
+          const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+          const encrypted_file = nacl.secretbox(new Uint8Array(reader.result), nonce, random_key);
 
-        // ATTENTION change this to "box" encryption later, this is just for testing without logins
-        const encrypted_encryption_key_nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-        const encrypted_encryption_key = nacl.secretbox(random_key, encrypted_encryption_key_nonce, nacl.randomBytes(nacl.secretbox.keyLength));
+          const formData = new FormData();
 
-        formData.append('encrypted_file', new Blob([encrypted_file]));
-        formData.append('nonce', util.encodeBase64(nonce));
-        formData.append('encrypted_encryption_key', util.encodeBase64(encrypted_encryption_key));
-        formData.append('encrypted_encryption_key_nonce', util.encodeBase64(encrypted_encryption_key_nonce));
+          // ATTENTION change this to "box" encryption later, this is just for testing without logins
+          const encrypted_encryption_key_nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
+          const encrypted_encryption_key = nacl.secretbox(random_key, encrypted_encryption_key_nonce, nacl.randomBytes(nacl.secretbox.keyLength));
 
-        const config = {
-          headers: {
-            'content-type': 'multipart/form-data'
-          }
-        };
+          formData.append('encrypted_file', new Blob([encrypted_file]));
+          formData.append('file_name', file_name);
+          formData.append('nonce', util.encodeBase64(nonce));
+          formData.append('encrypted_encryption_key', util.encodeBase64(encrypted_encryption_key));
+          formData.append('encrypted_encryption_key_nonce', util.encodeBase64(encrypted_encryption_key_nonce));
 
-        axios.post(server + "/api/upload/", formData, config)
-        .then((response) => {
-          console.log("The file is successfully uploaded");
-          callback(null, "The file is successfully uploaded");
-        }).catch((error) => {
-          console.log(error);
-          callback(error, null);
-        });
-      }, false);
+          const config = {
+            headers: {
+              'content-type': 'multipart/form-data'
+            }
+          };
 
-      reader.readAsArrayBuffer(file);
+          axios.post(server + "/api/file/upload/", formData, config)
+          .then((response) => {
+            console.log("The file is successfully uploaded");
+            callback(null, "The file is successfully uploaded");
+          }).catch((error) => {
+            console.log(error);
+            callback(error, null);
+          });
+        }, false);
+
+        reader.readAsArrayBuffer(file);
+      }
+
+      uploadFileAsync(this.state.file, this.state.file_name, (err, res) => {
+        if (err) console.log("ERROR CAUGHT");
+      });
+
+    } else {
+      // DOWNLOAD demo
+
+      axios.get(server + "/api/file/" + this.state.fileId + "/")
+      .then((response) => {
+        console.log("The file is successfully downloaded", response);
+        return axios.get(server + "/api/file/" + this.state.fileId + "/header/");
+      }).then((response) => {
+        console.log("The file header is successfully downloaded", response)
+      }).catch((error) => {
+        console.log(error);
+      });
     }
-
-    uploadFileAsync(this.state.file, (err, res) => {
-      if (err) console.log("ERROR CAUGHT");
-    });
   }
 
-  onChange(e) {
-    this.setState({file:e.target.files[0]});
+  onChange(e, field) {
+    if (field == 'f') {
+      this.setState({ file : e.target.files[0] });
+    } else if (field == 'n') {
+      this.setState({ file_name : e.target.value });
+    } else {
+      this.setState({ fileId : e.target.value });
+    }
   }
 
   render() {
     return (
-      <form onSubmit={this.onFormSubmit}>
-          <h1>File Upload</h1>
-          <input type="file" name="myFile" onChange={this.onChange} />
-          <button type="submit">Upload</button>
-      </form>
+      <div>
+        <form onSubmit={(e) => this.onFormSubmit(e, 'u')}>
+            <h1>File Upload</h1>
+            <input type="file" name="myFile" onChange={(e) => this.onChange(e, 'f')} />
+            <input type="text" name="fileName" onChange={(e) => this.onChange(e, 'n')} />
+            <button type="submit">Upload</button>
+        </form>
+        <form onSubmit={(e) => this.onFormSubmit(e, 'd')}>
+            <h1>File Download</h1>
+            <input type="text" name="fileId" onChange={(e) => this.onChange(e, 'i')} />
+            <button type="submit">Download</button>
+        </form>
+      </div>
     )
   }
 }

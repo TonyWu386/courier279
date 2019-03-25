@@ -906,10 +906,12 @@ app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
 
     let fileId = req.params.id;
 
-    conn.query(`SELECT hs.Nonce, hs.EncryptedEncryptionKey, uc.PubKey
+    conn.query(`SELECT hs.Nonce EncryptedEncryptionKeyNonce, hs.EncryptedEncryptionKey, uc.PubKey, f.Nonce
                 FROM FileEncryptionHeaderStore hs
                 INNER JOIN UserCredentials uc
                 ON uc.Users_UserId = hs.Sharer_UserId
+                INNER JOIN Files f
+                ON f.FileId = hs.Files_FileId
                 WHERE hs.Files_FileId = ? AND hs.Sharee_UserId = ?`,
     [fileId, req.userId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -917,9 +919,10 @@ app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
 
         res.json({
             'Nonce' : rows[0].Nonce,
+            'EncryptedEncryptionKeyNonce' : rows[0].EncryptedEncryptionKeyNonce,
             'EncryptedEncryptionKey' : rows[0].EncryptedEncryptionKey,
             'PubKey' : rows[0].PubKey,
-        })
+        });
     });
 });
 

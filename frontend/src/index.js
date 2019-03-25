@@ -140,7 +140,7 @@ class FileUp extends React.Component {
     if (field == 'u') {
       // UPLOAD demo
 
-      function uploadFileAsync(file, file_name, callback) {
+      function uploadFileAsync(file, file_name, pubkey, privkey, callback) {
         let reader = new FileReader();
 
         reader.addEventListener("load", function () {
@@ -154,8 +154,9 @@ class FileUp extends React.Component {
           const formData = new FormData();
 
           // ATTENTION change this to "box" encryption later, this is just for testing without logins
-          const encrypted_encryption_key_nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-          const encrypted_encryption_key = nacl.secretbox(random_key, encrypted_encryption_key_nonce, nacl.randomBytes(nacl.secretbox.keyLength));
+          const encrypted_encryption_key_nonce = nacl.randomBytes(nacl.box.nonceLength);
+
+          const encrypted_encryption_key = nacl.box(random_key, encrypted_encryption_key_nonce, pubkey, privkey);
 
           formData.append('encrypted_file', new Blob([encrypted_file]));
           formData.append('file_name', file_name);
@@ -182,19 +183,46 @@ class FileUp extends React.Component {
         reader.readAsArrayBuffer(file);
       }
 
-      uploadFileAsync(this.state.file, this.state.file_name, (err, res) => {
+      uploadFileAsync(this.state.file, this.state.file_name, this.props.getUserPubKey(), this.props.getUserPrivKey(), (err, res) => {
         if (err) console.log("ERROR CAUGHT");
       });
 
     } else {
       // DOWNLOAD demo
+      let encrypted_file_blob = null;
 
-      axios.get(server + "/api/file/" + this.state.fileId + "/")
+      axios.get(server + "/api/file/" + this.state.fileId + "/", {
+        responseType: 'arraybuffer',
+      })
       .then((response) => {
         console.log("The file is successfully downloaded", response);
+
+        encrypted_file_blob = new Uint8Array(response.data);
+
         return axios.get(server + "/api/file/" + this.state.fileId + "/header/");
       }).then((response) => {
-        console.log("The file header is successfully downloaded", response)
+
+        console.log("The file header is successfully downloaded", response);
+
+        const nonce = util.decodeBase64(response.data.Nonce);
+        const encrypted_encryption_key = util.decodeBase64(response.data.EncryptedEncryptionKey);
+        const encrypted_encryption_key_nonce = util.decodeBase64(response.data.EncryptedEncryptionKeyNonce);
+        const pubkey = util.decodeBase64(response.data.PubKey);
+
+        const privkey = this.props.getUserPrivKey();
+
+        const file_encryption_key = nacl.box.open(encrypted_encryption_key, encrypted_encryption_key_nonce, pubkey, privkey);
+        const decryptedFile = nacl.secretbox.open(encrypted_file_blob, nonce, file_encryption_key);
+
+        console.log("Decryption complete", decryptedFile);
+
+        const url = window.URL.createObjectURL(new Blob([decryptedFile]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'file');
+        document.body.appendChild(link);
+        link.click();
+
       }).catch((error) => {
         console.log(error);
       });
@@ -372,7 +400,10 @@ class Webapp extends React.Component {
             />
         </div>
         <div>
-          <FileUp/>
+          <FileUp
+            getUserPubKey={() => this.queryUserPubKey()}
+            getUserPrivKey={() => this.queryUserPrivKey()}
+          />
         </div>
       </div>
     );

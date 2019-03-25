@@ -18,6 +18,7 @@ export default class SceneTxt extends React.Component {
       txt: this.props.txt,
       movementsIn: this.props.movementsIn,
       createdSceneObj: [],
+      createdSceneGroupObj: [],
     }
   }
 
@@ -167,7 +168,7 @@ export default class SceneTxt extends React.Component {
     this.writerCube.position.y = this.camera.position.y;
     this.writerCube.position.z = this.camera.position.z -15;
 
-    if (this.props.getRenderStaleness()) {
+    if (this.props.getRenderStaleness() || this.props.getGroupRenderStaleness()) {
       // indication that we should rerender what's onscreen
       this.drawNewMsg()
       console.log("Got and rendered new messages");
@@ -221,6 +222,8 @@ export default class SceneTxt extends React.Component {
         cubemsg.material.dispose();
     }.bind(this))});
 
+    // TODO break this off into dedicated functions, it smells bad to repeat it
+
     // we do not want overlapped cubes, so move em
     let newOffset = 0;
     this.props.newMsg().forEach(function(toRender) {
@@ -266,10 +269,56 @@ export default class SceneTxt extends React.Component {
       }.bind(this));
 
     }.bind(this));
+    // TODO massive async issues
+    newOffset = 0;
+    this.props.newGroupMsg().forEach(function(toRender) {
+      let geom = new THREE.BoxGeometry(5, 5, 5);
+      let mat = new THREE.MeshBasicMaterial({ color : this.randomLightColor() });
+      let newcube = new THREE.Mesh(geom, mat);
+
+      this.tempctx.clearRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
+      this.tempctx.fillStyle = "rgba(25,25,25,1)";
+      this.tempctx.fillRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
+      this.tempctx.fillStyle = "rgba(250,250,250,1)";
+      // TODO wrap this text
+      let wrapped = ["From Group: " + toRender.GroupID, toRender.sender + " says: ",toRender.text];
+      let space = 0;
+
+      wrapped.forEach(function(line) {
+          // there is no decent built in height field...
+          space += this.linespacing;
+          this.tempctx.fillText(line, 4, space);
+      }.bind(this));
+
+      // Dealing with async loading
+      this.tempcanvas.toBlob(function(blob) {
+        let imageUrl = URL.createObjectURL(blob);
+        new THREE.TextureLoader().load(imageUrl, function (texture) {
+          // only load material if texture is ready
+          texture.needsUpdate = true;
+        
+          newcube.material.map = texture;
+          newcube.position.z = this.camera.position.z - 5;
+          newcube.position.x = this.camera.position.x + newOffset;
+          newcube.position.y = this.camera.position.y + 3;
+
+          newOffset += 5;
+          this.scene.add(newcube);
+          this.setState((old) => ({
+            createdSceneGroupObj : [...old.createdSceneGroupObj, newcube],
+          }));
+          console.log("Updated Group cubes dynamically - there are " + this.state.createdSceneGroupObj.length);
+        }.bind(this), undefined, function (err) {
+          console.error("Something bad happened while loading texture!");
+        });
+      }.bind(this));
+
+    }.bind(this));
 
     // clear render state
 
     this.props.updateRenderStaleness(false);
+    this.props.updateGroupRenderStaleness(false);
   }
 
   textwrap() {

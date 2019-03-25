@@ -36,9 +36,10 @@ export default class SceneTxtController extends React.Component {
       staleLiveInfo: false,
       liveInfo: '',
 
+      newLoginRender : false, // indicate that we should draw newlogin objects
+
       staleRender: false,
       toBeRendered: [], // {sender, text}
-      newLoginRender : false, // indicate that we should draw newlogin objects
       staleContacts: false,
       contactList: [], // list of contact objects
       activeContact: -1, // currently none
@@ -377,7 +378,7 @@ export default class SceneTxtController extends React.Component {
           activeGroup : active,
         }, () => {
           // callback on the group messages to display
-          // this.fetchGroupMessage()
+          this.fetchGroupMessage()
         });
         console.log("Fetch sessions success " + Object.keys(temp));
       }).catch((err) => {
@@ -394,7 +395,7 @@ export default class SceneTxtController extends React.Component {
     // TODO is there an elegant way to switch between group/contact setting?
     // this reuses the same message sending field as contacts
     const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-    const encrypted_message = nacl.secretbox(nacl.decodeUTF8(this.state.txt), nonce, targetGroupKey);
+    const encrypted_message = nacl.secretbox(util.decodeUTF8(this.state.txt), nonce, targetGroupKey);
 
     axios.post(server + "/api/messages/group/" + this.state.activeGroup + "/", {
       encrypted_body : util.encodeBase64(encrypted_message),
@@ -428,15 +429,20 @@ export default class SceneTxtController extends React.Component {
 
       let newGroupMessage = [];
       res.data.forEach(msg => {
-        const nonce = nacl.decodeBase64(msg.Nonce);
-        const encrypted_message = nacl.decodeBase64(msg.EncryptedText);
+        const nonce = util.decodeBase64(msg.Nonce);
+        const encrypted_message = util.decodeBase64(msg.EncryptedText);
         const decryptedText = nacl.secretbox.open(encrypted_message, nonce, targetGroupKey);
 
-         // TODO set render staleness and stuff
-        newGroupMessage.push({sender : msg.Username, text : decryptedText, GroupID : msg.GroupMessageId});
-      });      
 
-      console.log("Got following group messages on" + this.state.activeGroup + " - " + res.data);
+        newGroupMessage.push({sender : msg.Username, text : util.encodeUTF8(decryptedText), GroupID : this.state.activeGroup});
+      });
+      // render staleness settings
+      this.setState({
+        toBeGroupRendered: newGroupMessage,
+        staleGroupRender : true,
+      });
+
+      console.log("Got following group messages on" + this.state.activeGroup + " - " + newGroupMessage);
     }).catch((err) => {
       
       console.log("Messed up while getting group msgs - " + err.response.data);
@@ -462,6 +468,11 @@ export default class SceneTxtController extends React.Component {
 
       // This stores the group session key globally, so it can be used for this session's messages later
       this.addGroupSessionCryptData(response.data.sessionId, session_key);
+
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Created new group session. It has ID " + response.data.sessionId,
+      });
 
       console.log("Created new group session with id " + response.data.sessionId);
     }).catch((err) => {
@@ -576,6 +587,35 @@ export default class SceneTxtController extends React.Component {
     });
   }
 
+  // Group queries
+  queryNewGroupMessages() {
+    return this.state.toBeGroupRendered;
+  }
+
+  queryGroupRenderStaleness() {
+    return this.state.staleGroupRender;
+  }
+
+  updateGroupRenderStaleness(newStaleness) {
+    this.setState({
+      staleGroupRender: newStaleness,
+    });
+  }
+
+  queryGroups() {
+    return this.state.groupSessions;
+  }
+
+  queryGroupStaleness() {
+    return this.state.staleGroups;
+  }
+
+  updateGroupStaleness(newStaleness) {
+    this.setState({
+      staleGroups: newStaleness,
+    });
+  }
+
   render() {
     return (
       <div>
@@ -614,11 +654,19 @@ export default class SceneTxtController extends React.Component {
           <SceneTxt 
             txt={() => this.queryTxt()}
             movementsIn={() => this.queryMovement()}
+
             newMsg={() => this.queryNewMessages()}
             getRenderStaleness={() => this.queryRenderStaleness()}
             updateRenderStaleness ={(stale) => this.updateRenderStaleness(stale)}
             fetchContact={() => this.queryContacts()}
             fetchContactStaleness={() => this.queryContactStaleness()}
+
+            newGroupMsg={() => this.queryNewGroupMessages()}
+            getGroupRenderStaleness={() => this.queryGroupRenderStaleness()}
+            updateGroupRenderStaleness ={(stale) => this.updateGroupRenderStaleness(stale)}
+            fetchGroups={() => this.queryGroups()}
+            fetchGroupStaleness={() => this.queryGroupStaleness()}
+
             isNewLogin={() => this.queryNewLogin()}
           />
         </div>

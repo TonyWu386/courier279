@@ -801,20 +801,57 @@ app.get('/api/messages/group/:id/', isAuthenticated, function (req, res, next) {
 
 
 
+/*
+    Checks for
+    body.encrypted_encryption_key
+    body.encrypted_encryption_key_nonce
+*/
+let sanitizeFileEncryptionHeader = function(req, res, next) {
+    if (!validator.isBase64(req.body.encrypted_encryption_key)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.encrypted_encryption_key_nonce)) return res.status(400).end("bad input");
+    next();
+}
 
-app.post('/api/file/upload/', isAuthenticated, upload.single("encrypted_file"), (req, res, next) => {
-    console.log(req);
-    let filePath = req.file.path;
-    let nonce = req.body.nonce;
+app.post('/api/file/share/', sanitizeFileEncryptionHeader, isAuthenticated, (req, res, next) => {
+
+    let fileId = validator.escape(req.body.fileId);
+    let target_username = validator.escape(req.body.target_username);
+
     let encrypted_encryption_key = req.body.encrypted_encryption_key;
     let encrypted_encryption_key_nonce = req.body.encrypted_encryption_key_nonce;
-    let file_name = req.body.file_name;
+
+    conn.query(`SELECT UserId FROM Users WHERE Username = ?`, [target_username], (err, rows) => {
+        if (err) res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) res.status(400).contentType("text/plain").end("Target username doesn't exist");
+
+        let target_userId = rows[0].UserId;
+
+        conn.query(`INSERT INTO FileEncryptionHeaderStore(Files_FileId, Sharer_UserId, Sharee_UserId, Nonce, EncryptedEncryptionKey) VALUES (?,?,?,?,?)`,
+        [fileId, req.userId, target_userId, encrypted_encryption_key_nonce, encrypted_encryption_key], (err, rows) => {
+            if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+            return res.json("Successfully shared file with " + target_username);
+        });
+    });
+});
+
+
+
+app.post('/api/file/upload/', sanitizeFileEncryptionHeader, isAuthenticated, upload.single("encrypted_file"), (req, res, next) => {
+
+    let filePath = validator.escape(req.file.path);
+    let file_nonce = validator.escape(req.body.nonce);
+    let file_name = validator.escape(req.body.file_name);
+
+    let encrypted_encryption_key = req.body.encrypted_encryption_key;
+    let encrypted_encryption_key_nonce = req.body.encrypted_encryption_key_nonce;
+
 
     conn.beginTransaction((err) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
         conn.query(`INSERT INTO Files(FileName, Path, Nonce, FileOwner_UserId) VALUES (?,?,?,?)`,
-        [file_name, filePath, nonce, req.userId], (err, rows) => {
+        [file_name, filePath, file_nonce, req.userId], (err, rows) => {
             if (err) {
                 conn.rollback(() => {});
                 return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -842,7 +879,7 @@ app.post('/api/file/upload/', isAuthenticated, upload.single("encrypted_file"), 
 
 
 app.get('/api/file/:id/', isAuthenticated, (req, res, next) => {
-    console.log(req);
+
     let fileId = req.params.id;
 
     conn.query(`SELECT 1
@@ -866,7 +903,7 @@ app.get('/api/file/:id/', isAuthenticated, (req, res, next) => {
 
 
 app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
-    console.log(req);
+
     let fileId = req.params.id;
 
     conn.query(`SELECT hs.Nonce, hs.EncryptedEncryptionKey, uc.PubKey

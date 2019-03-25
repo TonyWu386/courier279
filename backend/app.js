@@ -596,11 +596,14 @@ app.get('/api/group/session/:id/usernames/', isAuthenticated, function (req, res
 */
 app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
 
-    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username, us.EncryptedSessionKey, us.Nonce FROM UserToSession us
+    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username, us.EncryptedSessionKey, us.Nonce, uc.PubKey
+                FROM UserToSession us
                 INNER JOIN Sessions s
                 ON us.Sessions_SessionId = s.SessionId
                 INNER JOIN Users u
                 ON s.Owner_UserId = u.UserId
+                INNER JOIN UserCredentials uc
+                ON uc.Users_UserId = s.Owner_UserId
                 WHERE us.Users_UserId = ?;`,
     [req.userId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -613,6 +616,7 @@ app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
                 'SessionType' : element.SessionType,
                 'SessionStartDate' : element.SessionStartDate,
                 'OwnerUsername' : element.Username,
+                'PubKey' : element.PubKey,
                 'EncryptedSessionKey' : element.EncryptedSessionKey,
                 'Nonce' : element.Nonce,
             });

@@ -363,9 +363,10 @@ export default class SceneTxtController extends React.Component {
         res.data.forEach(function(session) {
           let nonce = util.decodeBase64(session.Nonce);
           let encrypted_session_key = util.decodeBase64(session.EncryptedSessionKey);
+          let encrypted_session_key_pubkey = util.decodeBase64(session.PubKey);
           // NULL if authentication fails. Happens on unowned sessions
           let session_key = nacl.box.open(encrypted_session_key, nonce, 
-            this.props.getUserPubKey(), this.props.getUserPrivKey());
+            encrypted_session_key_pubkey, this.props.getUserPrivKey());
           temp[session.SessionId] = session_key;
         }.bind(this));
 

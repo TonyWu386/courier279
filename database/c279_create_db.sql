@@ -43,6 +43,28 @@ ENGINE = InnoDB;
 
 
 -- -----------------------------------------------------
+-- Table `c279`.`UserSettings`
+-- -----------------------------------------------------
+CREATE TABLE IF NOT EXISTS `c279`.`UserSettings` (
+  `Users_UserId` INT NOT NULL,
+  `ColorA` VARCHAR(7) NOT NULL,
+  `ColorB` VARCHAR(7) NOT NULL,
+  `ColorC` VARCHAR(7) NOT NULL,
+  `ColorD` VARCHAR(7) NOT NULL,
+  `TurnSpeed` INT NOT NULL,
+  `MoveSpeed` INT NOT NULL,
+  `FontSize` INT NOT NULL,
+  INDEX `fk_UserSettings_Users_idx` (`Users_UserId` ASC),
+  PRIMARY KEY (`Users_UserId`),
+  CONSTRAINT `fk_UserSettings_Users`
+    FOREIGN KEY (`Users_UserId`)
+    REFERENCES `c279`.`Users` (`UserId`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION)
+ENGINE = InnoDB;
+
+
+-- -----------------------------------------------------
 -- Table `c279`.`Contacts`
 -- -----------------------------------------------------
 CREATE TABLE IF NOT EXISTS `c279`.`Contacts` (

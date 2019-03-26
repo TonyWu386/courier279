@@ -928,6 +928,49 @@ app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
 
 
 
+app.post('/api/settings/', isAuthenticated, (req, res, next) => {
+    req.body.colorA = validator.escape(req.body.colorA);
+    req.body.colorB = validator.escape(req.body.colorB);
+    req.body.colorC = validator.escape(req.body.colorC);
+    req.body.colorD = validator.escape(req.body.colorD);
+    if (!validator.isNumeric(req.body.turn_speed)) return res.status(400).end("bad input");
+    if (!validator.isNumeric(req.body.move_speed)) return res.status(400).end("bad input");
+    if (!validator.isNumeric(req.body.font_size)) return res.status(400).end("bad input");
+
+    conn.query(`REPLACE INTO UserSettings(Users_UserId, ColorA, ColorB, ColorC, ColorD, TurnSpeed, MoveSpeed, FontSize)
+                VALUES (?,?,?,?,?,?,?,?)`,
+    [req.userId, req.body.colorA, req.body.colorB, req.body.colorC, req.body.colorD, req.body.turn_speed, req.body.move_speed, req.body.font_size],
+    (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        
+        return res.json("Saved settings");
+    })
+});
+
+
+
+app.get('/api/settings/', isAuthenticated, (req, res, next) => {
+    conn.query(`SELECT *
+                FROM UserSettings
+                WHERE Users_UserId = ?`,
+    [req.userId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(404).contentType("text/plain").end("User does not have saved settings");
+
+        return res.json({
+            'colorA' : rows[0].ColorA,
+            'colorB' : rows[0].ColorB,
+            'colorC' : rows[0].ColorC,
+            'colorD' : rows[0].ColorD,
+            'turn_speed' : rows[0].TurnSpeed,
+            'move_speed' : rows[0].MoveSpeed,
+            'font_size' : rows[0].FontSize,
+        });
+    })
+})
+
+
+
 
 const http = require('http');
 const PORT = 3001;

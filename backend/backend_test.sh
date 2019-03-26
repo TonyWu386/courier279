@@ -92,6 +92,12 @@ printf "\n"
 curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/messages/group/1/
 printf "\nTrying to get group session with BAD user...\n"
 curl --header 'Content-Type: application/json' -b cookiefileD localhost:3001/api/messages/group/1/
+printf "\n\n"
+
+curl --header 'Content-Type: application/json'  --request POST --data '{"colorA":"#FF0000", "colorB":"#FF0000", "colorC":"#FF0000", "colorD":"#FF0000", "turn_speed":"1", "move_speed":"1", "font_size":"1"}' -b cookiefileA localhost:3001/api/settings/
+printf "\n"
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/settings/
+
 printf "\nDone\n"
 
 rm cookiefile*

@@ -284,7 +284,7 @@ app.post('/api/contacts/', sanitizeContact, isAuthenticated, function (req, res,
                 let contact_type_id = rows[0].ContactTypeId;
 
                 conn.query(`INSERT INTO Contacts(Owning_UserId, Target_UserId, ContactTypes_ContactTypeId)
-                        VALUES (?,?,?)`,
+                            VALUES (?,?,?)`,
                 [owning_id, target_id, contact_type_id], (err, rows) => {
                     if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
@@ -315,7 +315,8 @@ app.get('/api/contacts/', sanitizeUsername, isAuthenticated, function (req, res,
                 ON ut.UserId = c.Target_UserId
                 INNER JOIN ContactTypes ct
                 ON ct.ContactTypeId = c.ContactTypes_ContactTypeId
-                WHERE c.Owning_UserId = ?;`,
+                WHERE c.Owning_UserId = ?;
+                ORDER BY c.DateAdded DESC`,
     [req.userId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
@@ -401,7 +402,7 @@ let sanitizeMessage = function(req, res, next) {
     POST /api/messages/direct/
 */
 app.post('/api/messages/direct/', sanitizeMessage, isAuthenticated, function (req, res, next) {
-    if (!validator.isBase64(req.body.target_username)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).end("bad input");
 
     let target_username = req.body.target_username;
     let encrypted_body = req.body.encrypted_body;
@@ -458,7 +459,7 @@ app.get('/api/messages/direct/', isAuthenticated, function (req, res, next) {
     let args = null;
 
     if (toandfrom_username) {
-        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername
+        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername, m.DateSent
         FROM DirectMessages m
         INNER JOIN Users u
         ON m.Sender_UserId = u.UserId
@@ -466,20 +467,21 @@ app.get('/api/messages/direct/', isAuthenticated, function (req, res, next) {
         OR (m.Receiver_UserId IN (SELECT UserId FROM Users WHERE Username = ?) AND m.Sender_UserId = ?)`;
         args = [req.userId, from_username, to_username, req.userId]
     } else if (to_username) {
-        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername
+        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername, m.DateSent
         FROM DirectMessages m
         INNER JOIN Users u
         ON m.Sender_UserId = u.UserId
         WHERE m.Receiver_UserId IN (SELECT UserId FROM Users WHERE Username = ?) AND m.Sender_UserId = ?`;
         args = [to_username, req.userId];
     } else {
-        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername, m.Nonce
+        query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername, m.Nonce, m.DateSent
         FROM DirectMessages m
         INNER JOIN Users u
         ON m.Sender_UserId = u.UserId
         WHERE m.Receiver_UserId = ? AND m.Sender_UserId IN (SELECT UserId FROM Users WHERE Username = ?)`;
         args = [req.userId, from_username];
     }
+    query += " ORDER BY m.DateSent DESC";
 
 
     conn.query(query, args, (err, rows) => {
@@ -493,7 +495,8 @@ app.get('/api/messages/direct/', isAuthenticated, function (req, res, next) {
                 'EncryptedText' : element.EncryptedText,
                 'SenderUsername' : element.SenderUsername,
                 'ReceiverUsername' : req.username,
-                'Nonce' : element.Nonce
+                'Nonce' : element.Nonce,
+                'DateSent' : element.DateSent,
             });
         });
 
@@ -574,7 +577,7 @@ app.get('/api/group/session/:id/usernames/', isAuthenticated, function (req, res
 
     conn.query(`SELECT Users_UserId, Username FROM UserToSession
                 INNER JOIN Users
-                ON Users_UserId = UserId
+                    ON Users_UserId = UserId
                 WHERE Sessions_SessionId = ?`,
     [sessionId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -611,11 +614,11 @@ app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
     conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username, us.EncryptedSessionKey, us.Nonce, uc.PubKey
                 FROM UserToSession us
                 INNER JOIN Sessions s
-                ON us.Sessions_SessionId = s.SessionId
+                    ON us.Sessions_SessionId = s.SessionId
                 INNER JOIN Users u
-                ON s.Owner_UserId = u.UserId
+                    ON s.Owner_UserId = u.UserId
                 INNER JOIN UserCredentials uc
-                ON uc.Users_UserId = s.Owner_UserId
+                    ON uc.Users_UserId = s.Owner_UserId
                 WHERE us.Users_UserId = ?;`,
     [req.userId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -660,7 +663,7 @@ app.post('/api/group/session/:id/adduser/', sanitizeEncryptedSessionKey, isAuthe
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
 
-    if (!validator.isBase64(req.body.username_to_add)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.username_to_add)) return res.status(400).end("bad input");
 
     let username_to_add = req.body.username_to_add;
     let sessionId = parseInt(req.params.id);
@@ -792,8 +795,9 @@ app.get('/api/messages/group/:id/', isAuthenticated, function (req, res, next) {
         conn.query(`SELECT gm.GroupMessageId, u.Username, gm.EncryptedText, gm.Nonce, gm.DateSent
                     FROM GroupMessages gm
                     INNER JOIN Users u
-                    ON gm.Sender_UserID = u.UserId
-                    WHERE gm.Sessions_SessionId = ?;`,
+                        ON gm.Sender_UserID = u.UserId
+                    WHERE gm.Sessions_SessionId = ?
+                    ORDER BY gm.DateSent DESC;`,
         [sessionId], (err, rows) => {
             if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
@@ -857,7 +861,7 @@ app.post('/api/file/share/', sanitizeFileEncryptionHeader, isAuthenticated, (req
 app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
     conn.query(`SELECT hs.Files_FileId, u.Username, hs.Date, FROM FileEncryptionHeaderStore hs
                 INNER JOIN Users u
-                ON hs.Sharer_UserId = u.UserId
+                    ON hs.Sharer_UserId = u.UserId
                 WHERE Sharee_UserId = ?
                 ORDER BY hs.Date DESC`,
     [req.userId], (err, rows) => {
@@ -955,9 +959,9 @@ app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
     conn.query(`SELECT hs.Nonce EncryptedEncryptionKeyNonce, hs.EncryptedEncryptionKey, uc.PubKey, f.Nonce
                 FROM FileEncryptionHeaderStore hs
                 INNER JOIN UserCredentials uc
-                ON uc.Users_UserId = hs.Sharer_UserId
+                    ON uc.Users_UserId = hs.Sharer_UserId
                 INNER JOIN Files f
-                ON f.FileId = hs.Files_FileId
+                    ON f.FileId = hs.Files_FileId
                 WHERE hs.Files_FileId = ? AND hs.Sharee_UserId = ?`,
     [fileId, req.userId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");

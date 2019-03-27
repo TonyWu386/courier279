@@ -15,6 +15,7 @@ export default class SceneTxt extends React.Component {
     this.updateSceneRender = this.updateSceneRender.bind(this)
     this.updateDirectMsgScene = this.updateDirectMsgScene.bind(this);
     this.updateGroupMsgScene = this.updateGroupMsgScene.bind(this);
+    this.getCurrentFacingAngle = this.getCurrentFacingAngle.bind(this);
     // TODO apparently it is bad style to copy props into state
     this.state = {
       txt: this.props.txt,
@@ -36,10 +37,10 @@ export default class SceneTxt extends React.Component {
       1000
     )
     const renderer = new THREE.WebGLRenderer({ antialias: true });
-    const geometry = new THREE.BoxGeometry(3, 3, 3);
 
     // == Handlers for dynamic writing ==
 
+    const geometry = new THREE.BoxGeometry(4, 2, 1);
     const chatexture = document.createElement('canvas');
     chatexture.height = 256;
     this.linespacing = 32;
@@ -47,7 +48,7 @@ export default class SceneTxt extends React.Component {
     const chatdraw = chatexture.getContext('2d');
 
     // initial text conditions
-    chatdraw.font = "30px Helvetica";
+    chatdraw.font = "18px Helvetica";
     chatdraw.linewidth = 5;
     chatdraw.fillStyle = "rgba(250,250,250,1)";
     chatdraw.fillRect(0, 0, chatexture.width, chatexture.height);
@@ -65,6 +66,34 @@ export default class SceneTxt extends React.Component {
     this.texture = threetext;
 
     const writerCube = new THREE.Mesh(geometry, material);
+
+    // == Handlers for dynamic UI ==
+
+    const uiBox = new THREE.BoxGeometry(1, 0.5, 0.5);
+    const uiCanvas = document.createElement('canvas');
+    uiCanvas.height = 256;
+    uiCanvas.width = 256;
+    const uiContext = uiCanvas.getContext('2d');
+
+    // initial text conditions
+    uiContext.font = "14px Helvetica";
+    uiContext.linewidth = 6;
+    uiContext.fillStyle = "rgba(50,50,50,1)";
+    uiContext.fillRect(0, 0, uiCanvas.width, uiCanvas.height);
+    uiContext.fillStyle = "rgba(225,225,225,1)";
+    uiContext.fillText("", 4, uiCanvas.height/2);
+
+    const uiTex = new THREE.Texture(uiCanvas);
+    // flag this as needing a rerender
+    uiTex.needsUpdate = true;
+
+    const uiMat = new THREE.MeshBasicMaterial({ map: uiTex })
+    
+    this.uiCanvas = uiCanvas;
+    this.uiContext = uiContext;
+    this.uiTex = uiTex;
+
+    const uiScroll = new THREE.Mesh(uiBox, uiMat);
 
     // To avoid having a bunch of static canvases, have one public temp canvas
     const tempcanvas = document.createElement('canvas');
@@ -89,7 +118,7 @@ export default class SceneTxt extends React.Component {
     new THREE.TextureLoader().load("texture/floorbasic.jpeg", function(texturef) {
       texturef.wrapS = THREE.RepeatWrapping;
       texturef.wrapT = THREE.RepeatWrapping;
-      texturef.repeat.set(1,1);
+      texturef.repeat.set(4,4);
 
       let floormaterial = new THREE.MeshBasicMaterial({map: texturef});
 
@@ -104,20 +133,23 @@ export default class SceneTxt extends React.Component {
 
     // add basic elements now
 
-    camera.position.z = 8
-    camera.position.y = 2
-    scene.add(writerCube)
-    renderer.setClearColor('#000000')
-    renderer.setSize(width, height)
+    camera.position.z = 8;
+    camera.position.y = 2;
+    scene.add(writerCube);
+    scene.add(uiScroll);
+    renderer.setClearColor('#000000');
+    renderer.setSize(width, height);
 
-    this.scene = scene
-    this.camera = camera
-    this.renderer = renderer
-    this.material = material
-    this.writerCube = writerCube
+    this.scene = scene;
+    this.camera = camera;
+    this.renderer = renderer;
+    this.material = material;
+    this.writerCube = writerCube;
+    this.uiScroll = uiScroll;
+    this.uiMat = uiMat;
 
-    this.mount.appendChild(this.renderer.domElement)
-    this.start()
+    this.mount.appendChild(this.renderer.domElement);
+    this.start();
   }
 
   componentWillUnmount() {
@@ -159,27 +191,60 @@ export default class SceneTxt extends React.Component {
       this.canvascontext.fillText(line, 4, space);
     }.bind(this));
 
-    // TODO React probably has a way for us to not do this every frame
-    // We don't need to, after all
+    // TODO perhaps find a way to not do this each frame
     // flag this as needing a rerender
     this.texture.needsUpdate = true;
     this.material.map = this.texture;
 
+    // The below handles the in-canvas UI elements
+
+    // do some text updates
+    this.uiContext.clearRect(0, 0, this.uiCanvas.width, this.uiCanvas.height);
+    this.uiContext.fillStyle = "rgba(50,50,50,1)";
+    this.uiContext.fillRect(0, 0, this.uiCanvas.width, this.uiCanvas.height);
+    this.uiContext.fillStyle = "rgba(225,225,225,1)";
+
+    // grab the active, if there is one
+    let activeI = this.props.getActiveContactIndex();
+    let activeContactStr = (activeI >= 0 ? 
+    this.props.fetchContact()[activeI].TargetUsername + " is the active contact"
+    : 'There is no Active Contact');
+    let nextContactStr = (activeI + 1 < this.props.fetchContact().length ? 
+      "Next: " + this.props.fetchContact()[activeI + 1].TargetUsername
+      : 'There is no Next Contact');
+    let prevContactStr = (activeI - 1 >= 0 ? 
+      "Prev: " + this.props.fetchContact()[activeI - 1].TargetUsername
+      : 'There is no Previous Contact');
+
+    let uiInfo = [prevContactStr, activeContactStr, nextContactStr];
+
+    let uiSpace = 0;
+    uiInfo.forEach(function(line) {
+      uiSpace += (this.linespacing * 0.5);
+      this.uiContext.fillText(line, 4, uiSpace);
+    }.bind(this));
+
+    this.uiTex.needsUpdate = true;
+    this.uiMat.map = this.uiTex;
+
     // the writer cube should act as a pseudo UI, stick it up close to the camera.
+    let newOffsetAngle = this.getCurrentFacingAngle();
 
-    // TODO generalize thiss, it's going to be repeated a ton
-    let facevector = new THREE.Vector3();
-    this.camera.getWorldDirection(facevector);
-    let newOffsetAngle = Math.atan2(facevector.x, facevector.z);
-
-    let zOffset = Math.cos(newOffsetAngle) * 6;
-    let xOffset = Math.sin(newOffsetAngle) * 6;
+    let zOffset = Math.cos(newOffsetAngle) * 3;
+    let xOffset = Math.sin(newOffsetAngle) * 3;
 
     this.writerCube.position.x = this.camera.position.x + xOffset;
-    this.writerCube.position.y = this.camera.position.y;
+    this.writerCube.position.y = this.camera.position.y - 1.8;
     this.writerCube.position.z = this.camera.position.z + zOffset;
 
-    this.camera.rotation
+    this.writerCube.lookAt(this.camera.position.x, this.camera.position.y, this.camera.position.z);
+
+    // Now do the same for other ui elements
+    this.uiScroll.position.x = this.camera.position.x + xOffset * 0.5;
+    this.uiScroll.position.y = this.camera.position.y + 0.8;
+    this.uiScroll.position.z = this.camera.position.z + zOffset * 0.5;
+
+    this.uiScroll.lookAt(this.camera.position.x, this.camera.position.y - 1, this.camera.position.z);
 
     // this'll go through and update any stale elements in the scene
     this.updateSceneRender();
@@ -188,8 +253,6 @@ export default class SceneTxt extends React.Component {
       // slow rotation of sent messages.
       cubemsg.rotation.y += 0.001;
     }.bind(this));
-
-    // removal case
 
     this.renderScene();
     this.frameId = window.requestAnimationFrame(this.animate);
@@ -218,15 +281,19 @@ export default class SceneTxt extends React.Component {
     return finalC;
   }
 
+  getCurrentFacingAngle() {
+    let facevector = new THREE.Vector3();
+    this.camera.getWorldDirection(facevector);
+    return Math.atan2(facevector.x, facevector.z);
+  }
+
   updateDirectMsgScene() {
     // TODO break this off into dedicated functions, it smells bad to repeat it
     // distance to place messages away from camera
     const radius = 16;
 
     // draw in a circle, start from camera facing location.
-    let facevector = new THREE.Vector3();
-    this.camera.getWorldDirection(facevector);
-    let newOffsetAngle = Math.atan2(facevector.x, facevector.z);
+    let newOffsetAngle = this.getCurrentFacingAngle();
     
     this.props.newMsg().forEach(function(toRender) {
       let geom = new THREE.BoxGeometry(4, 4, 4);

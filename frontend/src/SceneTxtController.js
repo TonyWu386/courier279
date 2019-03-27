@@ -590,6 +590,10 @@ export default class SceneTxtController extends React.Component {
     return this.state.contactList;
   }
 
+  queryActiveContactIndex() {
+    return this.state.activeContact;
+  }
+
   queryContactStaleness() {
     return this.state.staleContacts;
   }
@@ -650,10 +654,7 @@ export default class SceneTxtController extends React.Component {
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Send to Contact</button>
         <button class="btn" id="msg-add-group" onClick={(i) => this.handleGroupMessageAdd(i)}>Send to Group</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
-
-        <div id="tempcontacts">{this.state.activeContact >= 0 ? 
-        this.state.contactList[this.state.activeContact].TargetUsername + " is the active contact"
-        : 'No Active Contact'}</div>
+        
         <div class="lock">Camera is currently {this.state.isCameraLocked ? 
           'LOCKED - typing will not move the camera' : 'UNLOCKED - you can move in the world'}</div>
         <div id="controls">WASD to move. QE to change active contact. Use the Toggle Camera Locking button when you want to type</div>
@@ -671,6 +672,7 @@ export default class SceneTxtController extends React.Component {
             newMsg={() => this.queryNewMessages()}
             getRenderStaleness={() => this.queryRenderStaleness()}
             updateRenderStaleness ={(stale) => this.updateRenderStaleness(stale)}
+            getActiveContactIndex = {() => this.queryActiveContactIndex()}
             fetchContact={() => this.queryContacts()}
             fetchContactStaleness={() => this.queryContactStaleness()}
 

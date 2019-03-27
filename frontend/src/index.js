@@ -135,6 +135,15 @@ class FileUp extends React.Component {
     this.onChange = this.onChange.bind(this);
   }
 
+  getAvailableFiles() {
+    axios.get(server + "/api/file/share/")
+    .then((response) => {
+      console.log(response);
+    }).catch((error) => {
+      console.log(error);
+    });
+  }
+
   onFormSubmit(e, field){
     e.preventDefault();
 
@@ -295,6 +304,7 @@ class FileUp extends React.Component {
             <input type="text" name="username" onChange={(e) => this.onChange(e, 'u')} />
             <button type="submit">Share</button>
         </form>
+        <button onClick={() => this.getAvailableFiles()}>Available Files</button>
       </div>
     )
   }

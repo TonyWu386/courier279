@@ -874,6 +874,7 @@ app.post('/api/file/share/', sanitizeFileEncryptionHeader, isAuthenticated, (req
     Get list of file accessible to logged-in user
 */
 app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
+
     conn.query(`SELECT hs.Files_FileId, u.Username, hs.Date, f.FileName
                 FROM FileEncryptionHeaderStore hs
                 INNER JOIN Users u
@@ -885,7 +886,7 @@ app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
     [req.userId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
-        shared_files = []
+        let shared_files = [];
 
         rows.forEach(element => {
             shared_files.push({
@@ -894,9 +895,9 @@ app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
                 'SharerUsername' : element.Username,
                 'Date' : element.Date,
             });
+        });
 
         return res.json(shared_files);
-        });
     });
 });
 

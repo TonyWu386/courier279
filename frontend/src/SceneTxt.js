@@ -12,7 +12,9 @@ export default class SceneTxt extends React.Component {
     this.stop = this.stop.bind(this)
     this.animate = this.animate.bind(this)
     this.textwrap = this.textwrap.bind(this)
-    this.drawNewMsg = this.drawNewMsg.bind(this)
+    this.updateSceneRender = this.updateSceneRender.bind(this)
+    this.updateDirectMsgScene = this.updateDirectMsgScene.bind(this);
+    this.updateGroupMsgScene = this.updateGroupMsgScene.bind(this);
     // TODO apparently it is bad style to copy props into state
     this.state = {
       txt: this.props.txt,
@@ -163,16 +165,24 @@ export default class SceneTxt extends React.Component {
     this.texture.needsUpdate = true;
     this.material.map = this.texture;
 
-    this.writerCube.rotation.y += 0.02;
-    this.writerCube.position.x = this.camera.position.x;
-    this.writerCube.position.y = this.camera.position.y;
-    this.writerCube.position.z = this.camera.position.z -15;
+    // the writer cube should act as a pseudo UI, stick it up close to the camera.
 
-    if (this.props.getRenderStaleness() || this.props.getGroupRenderStaleness()) {
-      // indication that we should rerender what's onscreen
-      this.drawNewMsg()
-      console.log("Got and rendered new messages");
-    }
+    // TODO generalize thiss, it's going to be repeated a ton
+    let facevector = new THREE.Vector3();
+    this.camera.getWorldDirection(facevector);
+    let newOffsetAngle = Math.atan2(facevector.x, facevector.z);
+
+    let zOffset = Math.cos(newOffsetAngle) * 6;
+    let xOffset = Math.sin(newOffsetAngle) * 6;
+
+    this.writerCube.position.x = this.camera.position.x + xOffset;
+    this.writerCube.position.y = this.camera.position.y;
+    this.writerCube.position.z = this.camera.position.z + zOffset;
+
+    this.camera.rotation
+
+    // this'll go through and update any stale elements in the scene
+    this.updateSceneRender();
 
     this.state.createdSceneObj.forEach(function(cubemsg) {
       // slow rotation of sent messages.
@@ -208,24 +218,16 @@ export default class SceneTxt extends React.Component {
     return finalC;
   }
 
-  drawNewMsg() {
-    // Remove old messages, we need them not.
-    let temp = this.state.createdSceneObj;
-    this.setState({
-      createdSceneObj : [],
-    }, () => {
-      temp.forEach(function(cubemsg) {
-        // Properly dispose of all the old  elements to avoid memory leaks
-        this.scene.remove(cubemsg);
-        cubemsg.geometry.dispose();
-        cubemsg.material.map.dispose();
-        cubemsg.material.dispose();
-    }.bind(this))});
-
+  updateDirectMsgScene() {
     // TODO break this off into dedicated functions, it smells bad to repeat it
+    // distance to place messages away from camera
+    const radius = 16;
 
-    // we do not want overlapped cubes, so move em
-    let newOffset = 0;
+    // draw in a circle, start from camera facing location.
+    let facevector = new THREE.Vector3();
+    this.camera.getWorldDirection(facevector);
+    let newOffsetAngle = Math.atan2(facevector.x, facevector.z);
+    
     this.props.newMsg().forEach(function(toRender) {
       let geom = new THREE.BoxGeometry(4, 4, 4);
       let mat = new THREE.MeshBasicMaterial({ color : this.randomLightColor() });
@@ -253,11 +255,15 @@ export default class SceneTxt extends React.Component {
           texture.needsUpdate = true;
         
           newcube.material.map = texture;
-          newcube.position.z = this.camera.position.z - 10;
-          newcube.position.x = this.camera.position.x + newOffset;
+          // draw em in as good a circle as possible
+          
+          let zOffset = Math.cos(newOffsetAngle) * radius;
+          let xOffset = Math.sin(newOffsetAngle) * radius;
+          newcube.position.z = this.camera.position.z + zOffset;
+          newcube.position.x = this.camera.position.x + xOffset;
           newcube.position.y = this.camera.position.y;
-
-          newOffset += 5;
+          console.log("Z" + zOffset + "X" + xOffset);
+          newOffsetAngle += (Math.PI / 8);
           this.scene.add(newcube);
           this.setState((old) => ({
             createdSceneObj : [...old.createdSceneObj, newcube],
@@ -269,8 +275,10 @@ export default class SceneTxt extends React.Component {
       }.bind(this));
 
     }.bind(this));
-    // TODO massive async issues
-    newOffset = 0;
+  }
+
+  updateGroupMsgScene() {
+    let newOffset = 0;
     this.props.newGroupMsg().forEach(function(toRender) {
       let geom = new THREE.BoxGeometry(5, 5, 5);
       let mat = new THREE.MeshBasicMaterial({ color : this.randomLightColor() });
@@ -298,9 +306,9 @@ export default class SceneTxt extends React.Component {
           texture.needsUpdate = true;
         
           newcube.material.map = texture;
-          newcube.position.z = this.camera.position.z - 5;
+          newcube.position.z = this.camera.position.z - 12;
           newcube.position.x = this.camera.position.x + newOffset;
-          newcube.position.y = this.camera.position.y + 3;
+          newcube.position.y = this.camera.position.y + 2;
 
           newOffset += 5;
           this.scene.add(newcube);
@@ -314,11 +322,52 @@ export default class SceneTxt extends React.Component {
       }.bind(this));
 
     }.bind(this));
+  }
 
-    // clear render state
+  updateSceneRender() {
+    // decide which aspects needs re-rendering.
 
-    this.props.updateRenderStaleness(false);
-    this.props.updateGroupRenderStaleness(false);
+    if (this.props.getRenderStaleness()) {
+      // Remove old messages, we need them not.
+      let tempDirect = this.state.createdSceneObj;
+      this.setState({
+        createdSceneObj : [],
+      }, () => {
+        tempDirect.forEach(function(cubemsg) {
+          // Properly dispose of all the old  elements to avoid memory leaks
+          this.scene.remove(cubemsg);
+          cubemsg.geometry.dispose();
+          cubemsg.material.map.dispose();
+          cubemsg.material.dispose();
+        }.bind(this));
+      });
+
+      // handle fine details of adding new objects to the scene
+      this.updateDirectMsgScene();
+      // clear render state
+      this.props.updateRenderStaleness(false);
+      console.log("Redrew stale directmsgs");
+    }
+
+    if (this.props.getGroupRenderStaleness()) {
+      let tempGroup = this.state.createdSceneGroupObj;
+
+      this.setState({
+        createdSceneGroupObj : [],
+      }, () => {
+        tempGroup.forEach(function(cubemsg) {
+          this.scene.remove(cubemsg);
+          cubemsg.geometry.dispose();
+          cubemsg.material.map.dispose();
+          cubemsg.material.dispose();
+        }.bind(this));
+      });
+
+      this.updateGroupMsgScene();
+      this.props.updateGroupRenderStaleness(false);
+      console.log("Redrew stale groups");
+    }
+
   }
 
   textwrap() {

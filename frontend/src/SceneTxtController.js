@@ -285,7 +285,13 @@ export default class SceneTxtController extends React.Component {
 
   fetchUserMessages() {
     // corresponds to backend GET for this user
-    if (this.state.activeContact == -1) return;
+    if (this.state.activeContact == -1) {
+      this.setState({
+        toBeRendered: [],
+        staleRender : true,
+      });
+      return;
+    };
     let target_pubkey = null;
     let contactTar = this.state.contactList[this.state.activeContact].TargetUsername;
     axios.get(server + "/api/crypto/pubkey/?username=" + contactTar)
@@ -421,7 +427,13 @@ export default class SceneTxtController extends React.Component {
 
   fetchGroupMessage() {
     // Figure out the active group
-    if (this.state.activeGroup == -1) return;
+    if (this.state.activeGroup == -1) {
+      this.setState({
+        toBeGroupRendered: [],
+        staleGroupRender : true,
+      });
+      return;
+    }
     let targetGroupKey = this.state.groupSessions[this.state.activeGroup];
     if (targetGroupKey === null) { console.error("Could not get. Error obtaining Key."); return;}
 

@@ -85,17 +85,26 @@ let isAuthenticated = function(req, res, next) {
 /*
     Checks for
     body.username
+    or
+    query.username
 */
-let sanitizeSignin = function(req, res, next) {
-    req.body.username = validator.escape(req.body.username);
+let sanitizeUsername = function(req, res, next) {
+    if (req.body.username) {
+        if (!validator.isAlphanumeric(req.body.username)) return res.status(400).end("bad input");
+    }
+    if (req.query.username) {
+        if (!validator.isAlphanumeric(req.query.username)) return res.status(400).end("bad input");
+    }
     next();
 }
+
+
 
 /*
     POST /api/signin/
     Logs an existing user into the webapp
 */
-app.post('/api/signin/', sanitizeSignin, function (req, res, next) {
+app.post('/api/signin/', sanitizeUsername, function (req, res, next) {
     let username = req.body.username;
     // retrieve user from the database
 
@@ -144,14 +153,12 @@ app.post('/api/signin/', sanitizeSignin, function (req, res, next) {
 
 /*
     Checks for
-    body.username
     body.pubkey
     body.enc_privkey_nonce
     body.enc_privkey
     body.client_sym_kdf_salt
 */
 let sanitizeSignup = function(req, res, next) {
-    req.body.username = validator.escape(req.body.username);
     if (!validator.isBase64(req.body.pubkey)) return res.status(400).end("bad input");
     if (!validator.isBase64(req.body.enc_privkey_nonce)) return res.status(400).end("bad input");
     if (!validator.isBase64(req.body.enc_privkey)) return res.status(400).end("bad input");
@@ -163,7 +170,8 @@ let sanitizeSignup = function(req, res, next) {
     POST /api/signup/
     Creates a new user for the webapp, also logs in automatically
 */
-app.post('/api/signup/', sanitizeSignup, function (req, res, next) {
+app.post('/api/signup/', sanitizeUsername, sanitizeSignup, function (req, res, next) {
+
     let username = req.body.username;
     let pubkey = req.body.pubkey;
     let enc_privkey_nonce = req.body.enc_privkey_nonce;
@@ -236,9 +244,9 @@ app.post('/api/signup/', sanitizeSignup, function (req, res, next) {
     body.contact_type
 */
 let sanitizeContact = function(req, res, next) {
-    req.body.owning_username = validator.escape(req.body.owning_username);
-    req.body.target_username = validator.escape(req.body.target_username);
-    req.body.contact_type = validator.escape(req.body.contact_type);
+    if (!validator.isAlphanumeric(req.body.owning_username)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.contact_type)) return res.status(400).end("bad input");
     next();
 }
 
@@ -293,7 +301,8 @@ app.post('/api/contacts/', sanitizeContact, isAuthenticated, function (req, res,
 /*  Gets all contacts owned by username
     POST /api/contacts/?username=foo
 */
-app.get('/api/contacts/', isAuthenticated, function (req, res, next) {
+app.get('/api/contacts/', sanitizeUsername, isAuthenticated, function (req, res, next) {
+
     let owning_username = req.query.username;
 
     if (!owning_username) return res.status(400).contentType("text/plain").end("Unable to parse username for getting contacts");
@@ -329,8 +338,9 @@ app.get('/api/contacts/', isAuthenticated, function (req, res, next) {
 /*  Gets the public key owned by username
     GET /api/crypto/pubkey/?username=foo
 */
-app.get('/api/crypto/pubkey/', isAuthenticated, function (req, res, next) {
-    let owning_username = req.query.username;
+app.get('/api/crypto/pubkey/', sanitizeUsername, isAuthenticated, function (req, res, next) {
+
+    const owning_username = req.query.username;
 
     if (!owning_username) return res.status(400).contentType("text/plain").end("Unable to parse username for getting pubkey");
 
@@ -391,7 +401,9 @@ let sanitizeMessage = function(req, res, next) {
     POST /api/messages/direct/
 */
 app.post('/api/messages/direct/', sanitizeMessage, isAuthenticated, function (req, res, next) {
-    let target_username = validator.escape(req.body.target_username);
+    if (!validator.isBase64(req.body.target_username)) return res.status(400).end("bad input");
+
+    let target_username = req.body.target_username;
     let encrypted_body = req.body.encrypted_body;
     let nonce = req.body.nonce;
 
@@ -647,7 +659,10 @@ let sanitizeEncryptedSessionKey = function(req, res, next) {
 app.post('/api/group/session/:id/adduser/', sanitizeEncryptedSessionKey, isAuthenticated, function (req, res, next) {
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
-    let username_to_add = validator.escape(req.body.username_to_add);
+
+    if (!validator.isBase64(req.body.username_to_add)) return res.status(400).end("bad input");
+
+    let username_to_add = req.body.username_to_add;
     let sessionId = parseInt(req.params.id);
 
     if ((!encrypted_session_key) || (!nonce) || (!username_to_add) || (isNaN(sessionId))) return res.status(400).contentType("text/plain").end("Did not get required data");
@@ -814,8 +829,10 @@ let sanitizeFileEncryptionHeader = function(req, res, next) {
 
 app.post('/api/file/share/', sanitizeFileEncryptionHeader, isAuthenticated, (req, res, next) => {
 
-    let fileId = validator.escape(req.body.fileId);
-    let target_username = validator.escape(req.body.target_username);
+    if (!validator.isAlphanumeric(req.body.fileId)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).end("bad input");
+    let fileId = req.body.fileId;
+    let target_username = req.body.target_username;
 
     let encrypted_encryption_key = req.body.encrypted_encryption_key;
     let encrypted_encryption_key_nonce = req.body.encrypted_encryption_key_nonce;
@@ -837,11 +854,40 @@ app.post('/api/file/share/', sanitizeFileEncryptionHeader, isAuthenticated, (req
 
 
 
-app.post('/api/file/upload/', sanitizeFileEncryptionHeader, isAuthenticated, upload.single("encrypted_file"), (req, res, next) => {
+app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
+    conn.query(`SELECT hs.Files_FileId, u.Username, hs.Date, FROM FileEncryptionHeaderStore hs
+                INNER JOIN Users u
+                ON hs.Sharer_UserId = u.UserId
+                WHERE Sharee_UserId = ?
+                ORDER BY hs.Date DESC`,
+    [req.userId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+        shared_files = []
+
+        rows.forEach(element => {
+            shared_files.push({
+                'FileId' : element.Files_FileId,
+                'SharerUsername' : element.Username,
+                'Date' : element.Date,
+            });
+
+        return res.json(shared_files);
+        });
+    });
+});
+
+
+
+app.post('/api/file/upload/', upload.single("encrypted_file"), sanitizeFileEncryptionHeader, isAuthenticated, (req, res, next) => {
 
     let filePath = validator.escape(req.file.path);
-    let file_nonce = validator.escape(req.body.nonce);
-    let file_name = validator.escape(req.body.file_name);
+
+    if (!validator.isAlphanumeric(req.body.file_name)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
+
+    let file_name = req.body.file_name;
+    let file_nonce = req.body.nonce;
 
     let encrypted_encryption_key = req.body.encrypted_encryption_key;
     let encrypted_encryption_key_nonce = req.body.encrypted_encryption_key_nonce;
@@ -893,7 +939,7 @@ app.get('/api/file/:id/', isAuthenticated, (req, res, next) => {
             if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
             if (!rows.length) return res.status(400).contentType("text/plain").end("File does not exist");
 
-            const path = rows[0].Path;
+            const path = validator.unescape(rows[0].Path);
 
             return res.sendFile(path);
         });

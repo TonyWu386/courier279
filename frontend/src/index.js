@@ -129,6 +129,7 @@ class FileUp extends React.Component {
         file: null,
         file_name: null,
         fileId: null,
+        username: null,
     };
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.onChange = this.onChange.bind(this);
@@ -153,9 +154,9 @@ class FileUp extends React.Component {
 
           const formData = new FormData();
 
-          // ATTENTION change this to "box" encryption later, this is just for testing without logins
           const encrypted_encryption_key_nonce = nacl.randomBytes(nacl.box.nonceLength);
 
+          console.log(pubkey, privkey);
           const encrypted_encryption_key = nacl.box(random_key, encrypted_encryption_key_nonce, pubkey, privkey);
 
           formData.append('encrypted_file', new Blob([encrypted_file]));
@@ -187,7 +188,7 @@ class FileUp extends React.Component {
         if (err) console.log("ERROR CAUGHT");
       });
 
-    } else {
+    } else if (field == 'd') {
       // DOWNLOAD demo
       let encrypted_file_blob = null;
 
@@ -226,6 +227,40 @@ class FileUp extends React.Component {
       }).catch((error) => {
         console.log(error);
       });
+    } else {
+      // SHARE demo
+
+      let target_user_pubkey;
+
+      axios.get(server + "/api/crypto/pubkey/?username=" + this.state.username)
+      .then((response) => {
+        target_user_pubkey = util.decodeBase64(response.data.pubkey);
+
+        return axios.get(server + "/api/file/" + this.state.fileId + "/header/");
+      }).then((response) => {
+        console.log("The file header is successfully downloaded", response);
+
+        const encrypted_encryption_key = util.decodeBase64(response.data.EncryptedEncryptionKey);
+        const encrypted_encryption_key_nonce = util.decodeBase64(response.data.EncryptedEncryptionKeyNonce);
+        const pubkey = util.decodeBase64(response.data.PubKey);
+
+        const privkey = this.props.getUserPrivKey();
+        const file_encryption_key = nacl.box.open(encrypted_encryption_key, encrypted_encryption_key_nonce, pubkey, privkey);
+
+        const target_encrypted_encryption_key_nonce = nacl.randomBytes(nacl.box.nonceLength);
+        const target_encrypted_encryption_key = nacl.box(file_encryption_key, target_encrypted_encryption_key_nonce, target_user_pubkey, privkey);
+        
+        return axios.post("/api/file/share/", {
+          encrypted_encryption_key: util.encodeBase64(target_encrypted_encryption_key),
+          encrypted_encryption_key_nonce: util.encodeBase64(target_encrypted_encryption_key_nonce),
+          target_username: this.state.username,
+          fileId: this.state.fileId,
+        });
+      }).then((response) => {
+        console.log(response);
+      }).catch((error) => {
+        console.log(error);
+      });
     }
   }
 
@@ -234,8 +269,10 @@ class FileUp extends React.Component {
       this.setState({ file : e.target.files[0] });
     } else if (field == 'n') {
       this.setState({ file_name : e.target.value });
-    } else {
+    } else if (field == 'i') {
       this.setState({ fileId : e.target.value });
+    } else {
+      this.setState({ username : e.target.value });
     }
   }
 
@@ -252,6 +289,11 @@ class FileUp extends React.Component {
             <h1>File Download</h1>
             <input type="text" name="fileId" onChange={(e) => this.onChange(e, 'i')} />
             <button type="submit">Download</button>
+        </form>
+        <form onSubmit={(e) => this.onFormSubmit(e, 's')}>
+            <h1>File Share</h1>
+            <input type="text" name="username" onChange={(e) => this.onChange(e, 'u')} />
+            <button type="submit">Share</button>
         </form>
       </div>
     )

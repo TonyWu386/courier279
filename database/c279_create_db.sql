@@ -233,6 +233,7 @@ CREATE TABLE IF NOT EXISTS `c279`.`FileEncryptionHeaderStore` (
   `Sharer_UserId` INT NOT NULL,
   `Sharee_UserId` INT NOT NULL,
   `Nonce` VARCHAR(88) NOT NULL,
+  `Date` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `EncryptedEncryptionKey` VARCHAR(88) NOT NULL,
   PRIMARY KEY (`HeaderId`),
   INDEX `fk_FileEncryptionHeaderStore_Files1_idx` (`Files_FileId` ASC),

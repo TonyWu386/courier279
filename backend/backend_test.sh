@@ -49,7 +49,7 @@ curl --header 'Content-Type: application/json' --request POST --data '{"target_u
 
 printf "\n\nTesting group message sessions...\n"
 printf "User A starts new group session\n"
-curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"bg==", "nonce":"bg=="}' -b cookiefileA localhost:3001/api/group/session/
+curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"bg==", "nonce":"bg==", "session_name":"foosession"}' -b cookiefileA localhost:3001/api/group/session/
 printf "\nUser B starts new group session\n"
 curl --header 'Content-Type: application/json' --request POST --data '{"encrypted_session_key":"bg==", "nonce":"bg=="}' -b cookiefileB localhost:3001/api/group/session/
 

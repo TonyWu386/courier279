@@ -312,10 +312,10 @@ app.get('/api/contacts/', sanitizeUsername, isAuthenticated, function (req, res,
     conn.query(`SELECT c.ContactId, c.DateAdded, ct.ContactType, ut.Username
                 FROM Contacts c
                 INNER JOIN Users ut
-                ON ut.UserId = c.Target_UserId
+                    ON ut.UserId = c.Target_UserId
                 INNER JOIN ContactTypes ct
-                ON ct.ContactTypeId = c.ContactTypes_ContactTypeId
-                WHERE c.Owning_UserId = ?;
+                    ON ct.ContactTypeId = c.ContactTypes_ContactTypeId
+                WHERE c.Owning_UserId = ?
                 ORDER BY c.DateAdded DESC`,
     [req.userId], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
@@ -611,7 +611,7 @@ app.get('/api/group/session/:id/usernames/', isAuthenticated, function (req, res
 */
 app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
 
-    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, u.Username, us.EncryptedSessionKey, us.Nonce, uc.PubKey
+    conn.query(`SELECT s.SessionId, s.SessionType, s.SessionStartDate, s.SessionName, u.Username, us.EncryptedSessionKey, us.Nonce, uc.PubKey
                 FROM UserToSession us
                 INNER JOIN Sessions s
                     ON us.Sessions_SessionId = s.SessionId
@@ -628,6 +628,7 @@ app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
         rows.forEach(element => {
             sessions.push({
                 'SessionId' : element.SessionId,
+                'SessionName' : element.SessionName,
                 'SessionType' : element.SessionType,
                 'SessionStartDate' : element.SessionStartDate,
                 'OwnerUsername' : element.Username,
@@ -707,14 +708,22 @@ app.post('/api/group/session/', sanitizeEncryptedSessionKey, isAuthenticated, fu
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
 
+    let session_name;
+    if (req.body.session_name) {
+        if (!validator.isAlphanumeric(req.body.session_name)) return res.status(400).end("bad input");
+        session_name = req.body.session_name;
+    } else {
+        session_name = "";
+    }
+
     if ((!encrypted_session_key) || (!nonce)) return res.status(400).contentType("text/plain").end("Did not get required data");
 
     conn.beginTransaction((err) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
-        conn.query(`INSERT INTO Sessions(SessionType, Owner_UserId)
-                    VALUES (?, ?)`,
-        ['group', req.userId], (err, rows) => {
+        conn.query(`INSERT INTO Sessions(SessionType, Owner_UserId, SessionName)
+                    VALUES (?, ?, ?)`,
+        ['group', req.userId, session_name], (err, rows) => {
             if (err) {
                 conn.rollback(() => {});
                 return res.status(500).contentType("text/plain").end("Internal MySQL Error");

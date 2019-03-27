@@ -840,6 +840,9 @@ let sanitizeFileEncryptionHeader = function(req, res, next) {
     next();
 }
 
+/*
+    Shares an uploaded file with another user
+*/
 app.post('/api/file/share/', sanitizeFileEncryptionHeader, isAuthenticated, (req, res, next) => {
 
     if (!validator.isAlphanumeric(req.body.fileId)) return res.status(400).end("bad input");
@@ -867,10 +870,16 @@ app.post('/api/file/share/', sanitizeFileEncryptionHeader, isAuthenticated, (req
 
 
 
+/*
+    Get list of file accessible to logged-in user
+*/
 app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
-    conn.query(`SELECT hs.Files_FileId, u.Username, hs.Date, FROM FileEncryptionHeaderStore hs
+    conn.query(`SELECT hs.Files_FileId, u.Username, hs.Date, f.FileName
+                FROM FileEncryptionHeaderStore hs
                 INNER JOIN Users u
                     ON hs.Sharer_UserId = u.UserId
+                INNER JOIN Files f
+                    ON f.FileId = hs.Files_FileId
                 WHERE Sharee_UserId = ?
                 ORDER BY hs.Date DESC`,
     [req.userId], (err, rows) => {
@@ -881,6 +890,7 @@ app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
         rows.forEach(element => {
             shared_files.push({
                 'FileId' : element.Files_FileId,
+                'FileName' : element.FileName,
                 'SharerUsername' : element.Username,
                 'Date' : element.Date,
             });
@@ -892,6 +902,9 @@ app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
 
 
 
+/*
+    Uploads a new file to the system
+*/
 app.post('/api/file/upload/', upload.single("encrypted_file"), sanitizeFileEncryptionHeader, isAuthenticated, (req, res, next) => {
 
     let filePath = validator.escape(req.file.path);
@@ -937,6 +950,9 @@ app.post('/api/file/upload/', upload.single("encrypted_file"), sanitizeFileEncry
 
 
 
+/*
+    Gets the blob of an encrypted file
+*/
 app.get('/api/file/:id/', isAuthenticated, (req, res, next) => {
 
     let fileId = req.params.id;
@@ -961,11 +977,14 @@ app.get('/api/file/:id/', isAuthenticated, (req, res, next) => {
 
 
 
+/*
+    Gets the header w/ associated metadata and crypto data of a file
+*/
 app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
 
     let fileId = req.params.id;
 
-    conn.query(`SELECT hs.Nonce EncryptedEncryptionKeyNonce, hs.EncryptedEncryptionKey, uc.PubKey, f.Nonce
+    conn.query(`SELECT hs.Nonce EncryptedEncryptionKeyNonce, hs.EncryptedEncryptionKey, uc.PubKey, f.FileName, f.Nonce
                 FROM FileEncryptionHeaderStore hs
                 INNER JOIN UserCredentials uc
                     ON uc.Users_UserId = hs.Sharer_UserId
@@ -977,6 +996,7 @@ app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
         if (!rows.length) return res.status(403).contentType("text/plain").end("User does not have permissions on this file");
 
         res.json({
+            'FileName' : rows[0].FileName,
             'Nonce' : rows[0].Nonce,
             'EncryptedEncryptionKeyNonce' : rows[0].EncryptedEncryptionKeyNonce,
             'EncryptedEncryptionKey' : rows[0].EncryptedEncryptionKey,
@@ -987,6 +1007,9 @@ app.get('/api/file/:id/header/', isAuthenticated, (req, res, next) => {
 
 
 
+/*
+    Saves user setting
+*/
 app.post('/api/settings/', isAuthenticated, (req, res, next) => {
     req.body.colorA = validator.escape(req.body.colorA);
     req.body.colorB = validator.escape(req.body.colorB);
@@ -1008,6 +1031,9 @@ app.post('/api/settings/', isAuthenticated, (req, res, next) => {
 
 
 
+/*
+    Gets saved user setting
+*/
 app.get('/api/settings/', isAuthenticated, (req, res, next) => {
     conn.query(`SELECT *
                 FROM UserSettings

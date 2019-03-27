@@ -11,7 +11,8 @@ const cors = require('cors');
 const validator = require('validator');
 const multer = require('multer');
 
-let upload = multer({dest: path.join(__dirname, 'uploads')});
+let upload_enc = multer({dest: path.join(__dirname, 'encrypted_uploads')});
+let upload_pro = multer({dest: path.join(__dirname, 'profile_picture_uploads')});
 
 
 const corsOptions = {
@@ -90,10 +91,10 @@ let isAuthenticated = function(req, res, next) {
 */
 let sanitizeUsername = function(req, res, next) {
     if (req.body.username) {
-        if (!validator.isAlphanumeric(req.body.username)) return res.status(400).end("bad input");
+        if (!validator.isAlphanumeric(req.body.username)) return res.status(400).contentType("text/plain").end("bad input");
     }
     if (req.query.username) {
-        if (!validator.isAlphanumeric(req.query.username)) return res.status(400).end("bad input");
+        if (!validator.isAlphanumeric(req.query.username)) return res.status(400).contentType("text/plain").end("bad input");
     }
     next();
 }
@@ -159,10 +160,10 @@ app.post('/api/signin/', sanitizeUsername, function (req, res, next) {
     body.client_sym_kdf_salt
 */
 let sanitizeSignup = function(req, res, next) {
-    if (!validator.isBase64(req.body.pubkey)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.enc_privkey_nonce)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.enc_privkey)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.client_sym_kdf_salt)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.pubkey)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isBase64(req.body.enc_privkey_nonce)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isBase64(req.body.enc_privkey)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isBase64(req.body.client_sym_kdf_salt)) return res.status(400).contentType("text/plain").end("bad input");
     next();
 }
 
@@ -244,9 +245,9 @@ app.post('/api/signup/', sanitizeUsername, sanitizeSignup, function (req, res, n
     body.contact_type
 */
 let sanitizeContact = function(req, res, next) {
-    if (!validator.isAlphanumeric(req.body.owning_username)) return res.status(400).end("bad input");
-    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).end("bad input");
-    if (!validator.isAlphanumeric(req.body.contact_type)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.owning_username)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isAlphanumeric(req.body.contact_type)) return res.status(400).contentType("text/plain").end("bad input");
     next();
 }
 
@@ -352,7 +353,7 @@ app.get('/api/crypto/pubkey/', sanitizeUsername, isAuthenticated, function (req,
     [owning_username], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
-        if (!rows) return res.status(400).contentType("text/plain").end("Username doesn't exist");
+        if (!rows.length) return res.status(400).contentType("text/plain").end("Username doesn't exist");
 
         return res.json({
             'pubkey' : rows[0].PubKey,
@@ -392,8 +393,8 @@ app.delete('/api/contacts/:id/', isAuthenticated, function (req, res, next) {
     body.nonce
 */
 let sanitizeMessage = function(req, res, next) {
-    if (!validator.isBase64(req.body.encrypted_body)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.encrypted_body)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isBase64(req.body.nonce)) return res.status(400).contentType("text/plain").end("bad input");
     next();
 }
 
@@ -402,7 +403,7 @@ let sanitizeMessage = function(req, res, next) {
     POST /api/messages/direct/
 */
 app.post('/api/messages/direct/', sanitizeMessage, isAuthenticated, function (req, res, next) {
-    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).contentType("text/plain").end("bad input");
 
     let target_username = req.body.target_username;
     let encrypted_body = req.body.encrypted_body;
@@ -651,8 +652,8 @@ app.get('/api/group/session/', isAuthenticated, function (req, res, next) {
     body.nonce
 */
 let sanitizeEncryptedSessionKey = function(req, res, next) {
-    if (!validator.isBase64(req.body.encrypted_session_key)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.encrypted_session_key)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isBase64(req.body.nonce)) return res.status(400).contentType("text/plain").end("bad input");
     next();
 }
 
@@ -664,7 +665,7 @@ app.post('/api/group/session/:id/adduser/', sanitizeEncryptedSessionKey, isAuthe
     let encrypted_session_key = req.body.encrypted_session_key;
     let nonce = req.body.nonce;
 
-    if (!validator.isAlphanumeric(req.body.username_to_add)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.username_to_add)) return res.status(400).contentType("text/plain").end("bad input");
 
     let username_to_add = req.body.username_to_add;
     let sessionId = parseInt(req.params.id);
@@ -710,7 +711,7 @@ app.post('/api/group/session/', sanitizeEncryptedSessionKey, isAuthenticated, fu
 
     let session_name;
     if (req.body.session_name) {
-        if (!validator.isAlphanumeric(req.body.session_name)) return res.status(400).end("bad input");
+        if (!validator.isAlphanumeric(req.body.session_name)) return res.status(400).contentType("text/plain").end("bad input");
         session_name = req.body.session_name;
     } else {
         session_name = "";
@@ -835,8 +836,8 @@ app.get('/api/messages/group/:id/', isAuthenticated, function (req, res, next) {
     body.encrypted_encryption_key_nonce
 */
 let sanitizeFileEncryptionHeader = function(req, res, next) {
-    if (!validator.isBase64(req.body.encrypted_encryption_key)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.encrypted_encryption_key_nonce)) return res.status(400).end("bad input");
+    if (!validator.isBase64(req.body.encrypted_encryption_key)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isBase64(req.body.encrypted_encryption_key_nonce)) return res.status(400).contentType("text/plain").end("bad input");
     next();
 }
 
@@ -845,8 +846,8 @@ let sanitizeFileEncryptionHeader = function(req, res, next) {
 */
 app.post('/api/file/share/', sanitizeFileEncryptionHeader, isAuthenticated, (req, res, next) => {
 
-    if (!validator.isAlphanumeric(req.body.fileId)) return res.status(400).end("bad input");
-    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.fileId)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isAlphanumeric(req.body.target_username)) return res.status(400).contentType("text/plain").end("bad input");
     let fileId = req.body.fileId;
     let target_username = req.body.target_username;
 
@@ -902,16 +903,64 @@ app.get('/api/file/share/', isAuthenticated, (req, res, next) => {
 });
 
 
+let escapeFilePath = function(req, res, next) {
+    req.file.path = validator.escape(req.file.path);
+    next();
+}
+
+
+
+/*
+    Uploads a profile picture for the current user
+*/
+app.post('/api/profilepicture/', escapeFilePath, isAuthenticated, upload_pro.single("profile_picture"), (req, res, next) => {
+    let filePath  = req.file.path;
+
+    conn.query(`UPDATE Users
+                SET ProfilePicturePath = ?
+                WHERE UserId = ?`,
+    [filePath, req.userId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+        return res.json("Uploaded profile picture to user with id " + req.userId);
+    });
+});
+
+
+/*
+    Downloads a profile picture for the username
+*/
+app.get('/api/profileture/:username/', isAuthenticated, (req, res, next) => {
+
+    if (!validator.isAlphanumeric(req.params.username)) return res.status(400).contentType("text/plain").end("bad input");
+
+    const username = req.params.username;
+
+    conn.query(`SELECT ProfilePicturePath
+                FROM Users
+                WHERE username = ?`,
+    [username], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(404).contentType("text/plain").end("User doesn't exist");
+        if (!rows.ProfilePicturePath) return res.status(404).contentType("text/plain").end("User doesn't have a profile picture");
+
+        const rawPath = validator.unescape(rows[0].Path);
+
+        return res.sendFile(rawPath);
+    })
+});
+
+
 
 /*
     Uploads a new file to the system
 */
-app.post('/api/file/upload/', upload.single("encrypted_file"), sanitizeFileEncryptionHeader, isAuthenticated, (req, res, next) => {
+app.post('/api/file/upload/', upload_enc.single("encrypted_file"), escapeFilePath, sanitizeFileEncryptionHeader, isAuthenticated, (req, res, next) => {
 
-    let filePath = validator.escape(req.file.path);
+    let filePath = req.file.path;
 
-    if (!validator.isAlphanumeric(req.body.file_name)) return res.status(400).end("bad input");
-    if (!validator.isBase64(req.body.nonce)) return res.status(400).end("bad input");
+    if (!validator.isAlphanumeric(req.body.file_name)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isBase64(req.body.nonce)) return res.status(400).contentType("text/plain").end("bad input");
 
     let file_name = req.body.file_name;
     let file_nonce = req.body.nonce;
@@ -1016,9 +1065,9 @@ app.post('/api/settings/', isAuthenticated, (req, res, next) => {
     req.body.colorB = validator.escape(req.body.colorB);
     req.body.colorC = validator.escape(req.body.colorC);
     req.body.colorD = validator.escape(req.body.colorD);
-    if (!validator.isNumeric(req.body.turn_speed)) return res.status(400).end("bad input");
-    if (!validator.isNumeric(req.body.move_speed)) return res.status(400).end("bad input");
-    if (!validator.isNumeric(req.body.font_size)) return res.status(400).end("bad input");
+    if (!validator.isNumeric(req.body.turn_speed)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isNumeric(req.body.move_speed)) return res.status(400).contentType("text/plain").end("bad input");
+    if (!validator.isNumeric(req.body.font_size)) return res.status(400).contentType("text/plain").end("bad input");
 
     conn.query(`REPLACE INTO UserSettings(Users_UserId, ColorA, ColorB, ColorC, ColorD, TurnSpeed, MoveSpeed, FontSize)
                 VALUES (?,?,?,?,?,?,?,?)`,

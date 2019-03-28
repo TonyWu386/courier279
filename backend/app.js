@@ -11,6 +11,9 @@ const cors = require('cors');
 const validator = require('validator');
 const multer = require('multer');
 
+const Memcached = require('memcached');
+let contacts_cache = new Memcached('localhost:11211');
+
 let upload_enc = multer({dest: path.join(__dirname, 'encrypted_uploads')});
 let upload_pro = multer({dest: path.join(__dirname, 'profile_picture_uploads')});
 
@@ -48,6 +51,44 @@ const conn = mysql.createConnection({
     database : 'c279',
 })
 
+
+let warmCache = function(){
+    console.log("Retrieving contacts from the database");
+    conn.query(`SELECT c.Owning_UserId, c.ContactId, c.DateAdded, ct.ContactType, ut.Username
+                FROM Contacts c
+                INNER JOIN Users ut
+                    ON ut.UserId = c.Target_UserId
+                INNER JOIN ContactTypes ct
+                    ON ct.ContactTypeId = c.ContactTypes_ContactTypeId
+                ORDER BY c.DateAdded DESC`,
+    (err, rows) => {
+        if (err) {
+            console.log("Cached warming failed");
+            throw err;
+        }
+
+        let mappings = {}
+
+        rows.forEach(element => {
+            if (!mappings[element.Owning_UserId]) (mappings[element.Owning_UserId] = {});
+            mappings[element.Owning_UserId][element.ContactId] = {}
+            mappings[element.Owning_UserId][element.ContactId].ContactId = element.ContactId;
+            mappings[element.Owning_UserId][element.ContactId].DateAdded = element.DateAdded;
+            mappings[element.Owning_UserId][element.ContactId].ContactType = element.ContactType;
+            mappings[element.Owning_UserId][element.ContactId].Username = element.Username;
+        });
+
+        Object.keys(mappings).forEach(key => {
+            contacts_cache.set(key, mappings[key], 0, (err) => {
+                if (err) console.log(err);
+            });
+        });
+
+        console.log("Cache set", mappings);
+    });
+}
+
+
 conn.connect((err) => {
     if (err) throw err;
 
@@ -55,6 +96,10 @@ conn.connect((err) => {
         if (err) throw err;
     
         console.log('If the DB is working this will show 2: ', rows[0].solution);
+
+        warmCache();
+
+        console.log('Cache is ready');
     });
 });
 

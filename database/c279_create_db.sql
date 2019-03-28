@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS `c279`.`Users` (
   `UserId` INT NOT NULL AUTO_INCREMENT,
   `Username` VARCHAR(45) NOT NULL UNIQUE,
   `RealName` VARCHAR(45) NULL,
-  `ProfilePicturePath` VARCHAR(255) NULL;
+  `ProfilePicturePath` VARCHAR(255) NULL,
   PRIMARY KEY (`UserId`))
 ENGINE = InnoDB;
 

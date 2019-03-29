@@ -12,7 +12,7 @@ const validator = require('validator');
 const multer = require('multer');
 
 const Memcached = require('memcached');
-let contacts_cache = new Memcached('memcached:11211');
+let contacts_cache = new Memcached('localhost:11211');
 // ATTENTION switch to this one for docker
 // let contacts_cache = new Memcached('memcached:11211');
 
@@ -482,6 +482,13 @@ app.post('/api/messages/direct/', sanitizeMessage, isAuthenticated, function (re
         [senderId, target_id, encrypted_body, nonce], (err, rows) => {
             if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
+            getMessages(req.userId, target_username, req.username, (err, data) => {
+                if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+                longpoll.publishToId("/api/messages/direct/lp/:id/", (req.username + "_" + target_username), data);
+                longpoll.publishToId("/api/messages/direct/lp/:id/", (target_username + "_" + req.username), data);
+            });
+
             return res.json("sent message to " + target_username);
         });
     });
@@ -489,12 +496,56 @@ app.post('/api/messages/direct/', sanitizeMessage, isAuthenticated, function (re
 
 
 
-/*  For getting direct messages sent from a username, to the logged-in user
-    GET /api/messages/direct/?from=foo
+let longpoll = require("express-longpoll")(app);
 
-    For getting direct messages sent to a username, sent by the logged-in user
-    GET /api/messages/direct/?to=foo
+// GET /api/message/direct/lp/usernameofcaller_usernameoftarget
+longpoll.create("/api/messages/direct/lp/:id/", (req, res, next) => {
+    if (!req.session.username) return res.status(401).contentType("text/plain").end("Not signed in - access denied");
 
+    if (req.params.id.split("_")[0] != req.username) return res.status(400).contentType("text/plain").end("Bad username caller");
+    if (!validator.isAlphanumeric(req.params.id.split("_")[1])) res.status(400).contentType("text/plain").end("Bad username target");
+
+    console.log("Added longpoll with label " + req.params.id);
+    req.id = req.params.id;
+    next();
+});
+
+
+
+let getMessages = function(userId, target_username, username, callback) {
+
+    const query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername, m.DateSent
+        FROM DirectMessages m
+        INNER JOIN Users u
+        ON m.Sender_UserId = u.UserId
+        WHERE (m.Receiver_UserId = ? AND m.Sender_UserId IN (SELECT UserId FROM Users WHERE Username = ?))
+        OR (m.Receiver_UserId IN (SELECT UserId FROM Users WHERE Username = ?) AND m.Sender_UserId = ?)
+        ORDER BY m.DateSent DESC`;
+    let args = [userId, target_username, target_username, userId];
+
+    conn.query(query, args, (err, rows) => {
+        if (err) return callback(err, null);
+
+        let results = [];
+
+        rows.forEach(element => {
+            results.push({
+                'DirectMessageId' : element.DirectMessageId,
+                'EncryptedText' : element.EncryptedText,
+                'SenderUsername' : element.SenderUsername,
+                'ReceiverUsername' : username,
+                'Nonce' : element.Nonce,
+                'DateSent' : element.DateSent,
+            });
+        });
+
+        callback(null, results);
+    });
+}
+
+
+
+/*
     For getting all back-and-forth direct messages between 2 users
     GET /api/messages/direct/?toandfrom=foo
 */
@@ -814,6 +865,27 @@ app.post('/api/group/session/', sanitizeEncryptedSessionKey, isAuthenticated, fu
 
 
 
+// GET /api/message/direct/lp/groupmessageid
+longpoll.create("/api/messages/group/lp/:id/", (req, res, next) => {
+    if (!req.session.username) return res.status(401).contentType("text/plain").end("Not signed in - access denied");
+    if (!validator.isNumeric(req.params.id)) return res.status(400).contentType("text/plain").end("bad input");
+
+    conn.query(`SELECT Users_UserId
+                FROM UserToSession
+                WHERE Sessions_SessionId = ? AND Users_UserId = ?`,
+    [req.params.id, req.userId], (err, rows) => {
+        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+        if (!rows.length) return res.status(403).contentType("text/plain").end("Session does not exist or user is not part of it");
+
+        console.log("Added group longpoll with session " + req.params.id);
+        req.id = req.params.id;
+        next();
+    });
+});
+
+
+
+
 /*  For pushing a new group message to the server
     POST /api/messages/group/:id/
 */
@@ -838,11 +910,45 @@ app.post('/api/messages/group/:id/', sanitizeMessage, isAuthenticated, function 
         [sessionId, encrypted_body, senderId, nonce], (err, rows) => {
             if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
 
+            getGroupMessages(sessionId, (err, data) => {
+                if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+                longpoll.publishToId("/api/messages/group/lp/:id/", sessionId, data);
+            });
+
             return res.json("sent message to group session " + sessionId);
         });
     });
 });
 
+
+
+
+let getGroupMessages = function(sessionId, callback) {
+    conn.query(`SELECT gm.GroupMessageId, u.Username, gm.EncryptedText, gm.Nonce, gm.DateSent
+                    FROM GroupMessages gm
+                    INNER JOIN Users u
+                        ON gm.Sender_UserID = u.UserId
+                    WHERE gm.Sessions_SessionId = ?
+                    ORDER BY gm.DateSent DESC;`,
+    [sessionId], (err, rows) => {
+        if (err) return callback(err, null);
+
+        let messages = [];
+
+        rows.forEach(element => {
+            messages.push({
+                'GroupMessageId' : element.GroupMessageId,
+                'Username' : element.Username,
+                'EncryptedText' : element.EncryptedText,
+                'Nonce' : element.Nonce,
+                'DateSent' : element.DateSent,
+            });
+        });
+
+        callback(null, messages);
+    });
+};
 
 
 /*  For the group messages attached to a group session

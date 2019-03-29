@@ -375,7 +375,7 @@ app.get('/api/contacts/', sanitizeUsername, isAuthenticated, function (req, res,
     if (req.username != owning_username) return res.status(403).contentType("text/plain").end("Not signed in as owning user");
 
     getContacts(req.userId, (err, data) => {
-        if (err) res.status.contentType("text/plain").end("Internal Cache Error");
+        if (err) res.status(500).contentType("text/plain").end("Internal Cache Error");
 
         let results = [];
 

@@ -10,14 +10,15 @@
 
 A secure and trustless messaging and sharing application that respects the privacy of its users.
 - End-to-end encryption for direct messages, group messages, and files
-- Files will utilize seperated-header encryption, allowing quick and flexible sharing by re-encryption of headers
-- Trustless key management will ensure the server never has access to the private data of its users
+- Seamless crypto code handles everything from encryption to key management, no special user actions required
+- Files utilize seperated volume/header encryption, allowing rapid sharing with any number of users
+- Trustless security model ensures the server never has access to users' private data
 - Create and manage contacts, and configure sharing permissions among contacts
 
 Courier279 offers a unique 3-D user expirence:
 - Centers on an immersive first-person 3-D operating environment
 - Interactions such as viewing messages, contacts, incoming files, etc. will be done in this 3-D environment
-- Customize your own operating environment with flexible tools, and visit other users' customized environments
+- Customize your own operating environment with flexible tools, and save these settings in the cloud
 
 ### Beta Features
 
@@ -31,9 +32,7 @@ Courier279 offers a unique 3-D user expirence:
 
 - Manage group chats and sharing
 
-- Customize your own personal environment
-
-- Visit other users in their environment; movements update in real time.
+- Customize your own personal environment, save these settings in the cloud
 
 ### Technologies
 
@@ -55,6 +54,7 @@ Courier279 offers a unique 3-D user expirence:
 - The UI centers around a 3-D *three.js* canvas to provide an unique user expirence
 
 - Backend composed of an *Express* server with a *MySQL* database for data storage
+  - Caching via *Memcached*
 
 - Automated deployment via Docker
 

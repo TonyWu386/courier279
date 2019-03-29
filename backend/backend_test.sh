@@ -10,6 +10,9 @@ curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api
 
 printf "\n\nAdding test contacts...\n"
 curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserA", "target_username":"testuserB", "contact_type":"Friend"}' -b cookiefileA localhost:3001/api/contacts/
+printf "\nEarly get contact, should see one\n"
+curl --header 'Content-Type: application/json' -b cookiefileA localhost:3001/api/contacts/?username=testuserA
+printf "\n"
 curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserA", "target_username":"testuserC", "contact_type":"Friend"}' -b cookiefileA localhost:3001/api/contacts/
 curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserB", "target_username":"testuserD", "contact_type":"Friend"}' -b cookiefileB localhost:3001/api/contacts/
 curl --header 'Content-Type: application/json' --request POST --data '{"owning_username":"testuserB", "target_username":"testuserE", "contact_type":"Blocked"}' -b cookiefileB localhost:3001/api/contacts/

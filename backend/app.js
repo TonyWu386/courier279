@@ -12,7 +12,9 @@ const validator = require('validator');
 const multer = require('multer');
 
 const Memcached = require('memcached');
-let contacts_cache = new Memcached('localhost:11211');
+let contacts_cache = new Memcached('memcached:11211');
+// ATTENTION switch to this one for docker
+// let contacts_cache = new Memcached('memcached:11211');
 
 let upload_enc = multer({dest: path.join(__dirname, 'encrypted_uploads')});
 let upload_pro = multer({dest: path.join(__dirname, 'profile_picture_uploads')});
@@ -52,16 +54,22 @@ const conn = mysql.createConnection({
 })
 
 
-let warmCache = function(){
-    console.log("Retrieving contacts from the database");
-    conn.query(`SELECT c.Owning_UserId, c.ContactId, c.DateAdded, ct.ContactType, ut.Username
+let warmCache = function(userId){
+
+    let args = [];
+    let query = `SELECT c.Owning_UserId, c.ContactId, c.DateAdded, ct.ContactType, ut.Username
                 FROM Contacts c
                 INNER JOIN Users ut
                     ON ut.UserId = c.Target_UserId
                 INNER JOIN ContactTypes ct
-                    ON ct.ContactTypeId = c.ContactTypes_ContactTypeId
-                ORDER BY c.DateAdded DESC`,
-    (err, rows) => {
+                    ON ct.ContactTypeId = c.ContactTypes_ContactTypeId`;
+    if (userId) {
+        query += ` WHERE c.Owning_UserId = ? `;
+        args = [userId];
+    }
+    query += ` ORDER BY c.DateAdded DESC`;
+
+    conn.query(query, args, (err, rows) => {
         if (err) {
             console.log("Cached warming failed");
             throw err;
@@ -97,7 +105,7 @@ conn.connect((err) => {
     
         console.log('If the DB is working this will show 2: ', rows[0].solution);
 
-        warmCache();
+        warmCache(null);
 
         console.log('Cache is ready');
     });
@@ -296,53 +304,64 @@ let sanitizeContact = function(req, res, next) {
     next();
 }
 
-/*  For creating a new contacts
+let storeContact = function(contact, callback) {
+    conn.query(`SELECT ContactTypeId FROM ContactTypes WHERE ContactType = ?`, [contact.contact_type], (err, rows) => {
+        if (err) callback(err, null);
+        if (!rows.length) callback("Invalid Contact Type", null);
+
+        const contact_type_id = rows[0].ContactTypeId;
+
+        conn.query(`INSERT INTO Contacts(Owning_UserId, Target_UserId, ContactTypes_ContactTypeId)
+                    VALUES (?,?,?)`,
+        [contact.owning_id, contact.target_id, contact_type_id], (err, rows) => {
+            if (err) return callback(err, null);
+
+            warmCache(contact.owning_id);
+
+            return callback(null, rows.insertId);
+        });
+    });
+};
+
+/*  For creating a new contact as the logged-in user
     POST /api/contacts/
 */
 app.post('/api/contacts/', sanitizeContact, isAuthenticated, function (req, res, next) {
-    let owning_username = req.body.owning_username;
-    let target_username = req.body.target_username;
-    let contact_type = req.body.contact_type;
+    const owning_id = req.userId;
+    const target_username = req.body.target_username;
+    const contact_type = req.body.contact_type;
 
-    let owning_id = null;
     let target_id = null;
 
-    if (req.username != owning_username) return res.status(403).contentType("text/plain").end("Not signed in as owning user");
-
-    conn.query(`SELECT UserId From Users WHERE Username = ?;`, [owning_username], (err, rows) => {
+    conn.query(`SELECT UserId From Users WHERE Username = ?;`, [target_username], (err, rows) => {
         if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
-        if (!rows.length) return res.status(500).contentType("text/plain").end("Can't find contact owner in DB");
+        if (!rows.length) return res.status(500).contentType("text/plain").end("Can't find contact target in DB");
 
-        owning_id = rows[0].UserId;
+        target_id = rows[0].UserId;
 
-        conn.query(`SELECT UserId From Users WHERE Username = ?;`, [target_username], (err, rows) => {
-            if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
-            if (!rows.length) return res.status(500).contentType("text/plain").end("Can't find contact target in DB");
+        if (owning_id == target_id) return res.status(400).contentType("text/plain").end("Can't add user as contact to itself");
 
-            target_id = rows[0].UserId;
+        storeContact({
+            'owning_id' : owning_id,
+            'target_id' : target_id,
+            'contact_type' : contact_type,
+        }, (err, insertId) => {
+            if (err) return res.status(500).contentType("text/plain").end("Internal Cache Error");
 
-            if (owning_id == target_id) return res.status(400).contentType("text/plain").end("Can't add user as contact to itself");
-
-            conn.query(`SELECT ContactTypeId FROM ContactTypes WHERE ContactType = ?`, [contact_type], (err, rows) => {
-                if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
-                if (!rows.length) return res.status(500).contentType("text/plain").end("Invalid Contact Type");
-
-                let contact_type_id = rows[0].ContactTypeId;
-
-                conn.query(`INSERT INTO Contacts(Owning_UserId, Target_UserId, ContactTypes_ContactTypeId)
-                            VALUES (?,?,?)`,
-                [owning_id, target_id, contact_type_id], (err, rows) => {
-                    if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
-
-                    return res.json("added contact, id " + rows.insertId);
-                });
-            });
+            return res.json("added contact, id " + insertId);
         });
     });
 });
 
 
 
+
+let getContacts = function(userId, callback) {
+    contacts_cache.get(userId, (err, data) => {
+        if (err) return callback(err, null);
+        return callback(null, data);
+    });
+}
 
 /*  Gets all contacts owned by username
     POST /api/contacts/?username=foo
@@ -355,25 +374,17 @@ app.get('/api/contacts/', sanitizeUsername, isAuthenticated, function (req, res,
 
     if (req.username != owning_username) return res.status(403).contentType("text/plain").end("Not signed in as owning user");
 
-    conn.query(`SELECT c.ContactId, c.DateAdded, ct.ContactType, ut.Username
-                FROM Contacts c
-                INNER JOIN Users ut
-                    ON ut.UserId = c.Target_UserId
-                INNER JOIN ContactTypes ct
-                    ON ct.ContactTypeId = c.ContactTypes_ContactTypeId
-                WHERE c.Owning_UserId = ?
-                ORDER BY c.DateAdded DESC`,
-    [req.userId], (err, rows) => {
-        if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+    getContacts(req.userId, (err, data) => {
+        if (err) res.status.contentType("text/plain").end("Internal Cache Error");
 
         let results = [];
 
-        rows.forEach(element => {
+        Object.keys(data).forEach(key => {
             results.push({
-                'ContactId' : element.ContactId,
-                'TargetUsername' : element.Username,
-                'DateAdded' : element.DateAdded,
-                'ContactType' : element.ContactType,
+                'ContactId' : key,
+                'TargetUsername' : data[key].Username,
+                'DateAdded' : data[key].DateAdded,
+                'ContactType' : data[key].ContactType,
             });
         });
 
@@ -424,6 +435,8 @@ app.delete('/api/contacts/:id/', isAuthenticated, function (req, res, next) {
 
         conn.query(`DELETE FROM Contacts WHERE ContactId = ?`, [contactId], (err, rows) => {
             if (err) return res.status(500).contentType("text/plain").end("Internal MySQL Error");
+
+            warmCache(req.userId);
 
             return res.json("deleted contact at id " + contactId);
         });

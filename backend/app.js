@@ -56,43 +56,47 @@ const conn = mysql.createConnection({
 
 let warmCache = function(userId){
 
-    let args = [];
-    let query = `SELECT c.Owning_UserId, c.ContactId, c.DateAdded, ct.ContactType, ut.Username
-                FROM Contacts c
-                INNER JOIN Users ut
-                    ON ut.UserId = c.Target_UserId
-                INNER JOIN ContactTypes ct
-                    ON ct.ContactTypeId = c.ContactTypes_ContactTypeId`;
-    if (userId) {
-        query += ` WHERE c.Owning_UserId = ? `;
-        args = [userId];
-    }
-    query += ` ORDER BY c.DateAdded DESC`;
+    contacts_cache.flush((err) => {
+        if (err) throw err;
 
-    conn.query(query, args, (err, rows) => {
-        if (err) {
-            console.log("Cached warming failed");
-            throw err;
+        let args = [];
+        let query = `SELECT c.Owning_UserId, c.ContactId, c.DateAdded, ct.ContactType, ut.Username
+                    FROM Contacts c
+                    INNER JOIN Users ut
+                        ON ut.UserId = c.Target_UserId
+                    INNER JOIN ContactTypes ct
+                        ON ct.ContactTypeId = c.ContactTypes_ContactTypeId`;
+        if (userId) {
+            query += ` WHERE c.Owning_UserId = ? `;
+            args = [userId];
         }
+        query += ` ORDER BY c.DateAdded DESC`;
 
-        let mappings = {}
+        conn.query(query, args, (err, rows) => {
+            if (err) {
+                console.log("Cached warming failed");
+                throw err;
+            }
 
-        rows.forEach(element => {
-            if (!mappings[element.Owning_UserId]) (mappings[element.Owning_UserId] = {});
-            mappings[element.Owning_UserId][element.ContactId] = {}
-            mappings[element.Owning_UserId][element.ContactId].ContactId = element.ContactId;
-            mappings[element.Owning_UserId][element.ContactId].DateAdded = element.DateAdded;
-            mappings[element.Owning_UserId][element.ContactId].ContactType = element.ContactType;
-            mappings[element.Owning_UserId][element.ContactId].Username = element.Username;
-        });
+            let mappings = {}
 
-        Object.keys(mappings).forEach(key => {
-            contacts_cache.set(key, mappings[key], 0, (err) => {
-                if (err) console.log(err);
+            rows.forEach(element => {
+                if (!mappings[element.Owning_UserId]) (mappings[element.Owning_UserId] = {});
+                mappings[element.Owning_UserId][element.ContactId] = {}
+                mappings[element.Owning_UserId][element.ContactId].ContactId = element.ContactId;
+                mappings[element.Owning_UserId][element.ContactId].DateAdded = element.DateAdded;
+                mappings[element.Owning_UserId][element.ContactId].ContactType = element.ContactType;
+                mappings[element.Owning_UserId][element.ContactId].Username = element.Username;
             });
-        });
 
-        console.log("Cache set", mappings);
+            Object.keys(mappings).forEach(key => {
+                contacts_cache.set(key, mappings[key], 0, (err) => {
+                    if (err) console.log(err);
+                });
+            });
+
+            console.log("Cache set", mappings);
+        });
     });
 }
 
@@ -375,18 +379,20 @@ app.get('/api/contacts/', sanitizeUsername, isAuthenticated, function (req, res,
     if (req.username != owning_username) return res.status(403).contentType("text/plain").end("Not signed in as owning user");
 
     getContacts(req.userId, (err, data) => {
-        if (err) res.status(500).contentType("text/plain").end("Internal Cache Error");
+        if (err) return res.status(500).contentType("text/plain").end("Internal Cache Error");
 
         let results = [];
 
-        Object.keys(data).forEach(key => {
-            results.push({
-                'ContactId' : key,
-                'TargetUsername' : data[key].Username,
-                'DateAdded' : data[key].DateAdded,
-                'ContactType' : data[key].ContactType,
+        if (data) {
+            Object.keys(data).forEach(key => {
+                results.push({
+                    'ContactId' : key,
+                    'TargetUsername' : data[key].Username,
+                    'DateAdded' : data[key].DateAdded,
+                    'ContactType' : data[key].ContactType,
+                });
             });
-        });
+        }
 
         return res.json(results);
     });

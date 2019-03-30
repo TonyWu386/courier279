@@ -49,6 +49,10 @@ export default class SceneTxtController extends React.Component {
       staleGroups: false,
       groupSessions: {}, // list of group message sessions
       activeGroup: -1, // currently none
+
+      staleFileRender: false,
+      sharedFiles: [],
+      activeFile: -1,
     }
   }
 
@@ -65,6 +69,7 @@ export default class SceneTxtController extends React.Component {
       // fetch contacts and groups on login.
       this.fetchUserContactList();
       this.fetchUserSessionList();
+      //this.getAvailableFiles();
     }.bind(this));
   }
 
@@ -161,6 +166,48 @@ export default class SceneTxtController extends React.Component {
     });
   }
 
+  // for handling file related presses
+  handleFile(event) {
+    if (!this.state.isCameraLocked) {
+      
+      switch(event.key) {
+        case 'f': 
+                  // TODO shared file handler. Use F to grab uploaded files
+                  // RT cycle???
+                  break;
+        default:
+      }
+    }
+  }
+
+  // for nav through group submenu
+  // TODO complete and hook
+  handleGroupNav(event) {
+    if (!this.state.isCameraLocked && this.state.activeGroup != -1) {
+      let activeG = this.state.activeGroup;
+      switch(event.key) {
+        case 'c': 
+                  if (activeG < Object.keys(this.state.groupSessions).length - 1) {
+                    this.setState({
+                      activeGroup : activeG + 1,
+                    }, () => {
+                      this.fetchGroupMessage();
+                    }); 
+                  } break;
+
+        case 'z': 
+                  if (activeG > 0) {
+                    this.setState({
+                      activeGroup : activeG - 1,
+                    }, () => {
+                      this.fetchGroupMessage();
+                    });
+                  } break;
+        default:
+      }
+    }
+  }
+
   // for navigation through the contacts submenu
   handleContactNav(event) {
     if (!this.state.isCameraLocked && this.state.activeContact != -1) {
@@ -240,12 +287,34 @@ export default class SceneTxtController extends React.Component {
     }
   }
 
+  // == File handling ==
+
+  getAvailableFiles() {
+    axios.get(server + "/api/file/share/")
+    .then((res) => {
+      let temp = res.data;
+      let active = -1;
+      if (temp.length > 0) active = 0;
+      this.setState({
+        staleFileRender : true,
+        sharedFiles : temp,
+        activeFile : active
+      })
+    }).catch((error) => {
+      console.error("Something went wrong while getting shared files " + error.response.data);
+    });
+  }
+
+  downloadActiveFile() {
+
+  }
+  // == Contact and group management ==
+
   fetchUserContactList() {
     axios.get(server + "/api/contacts/?username=" + this.props.getUserName())
       .then((res) => {
         let temp = res.data;
         let active = -1;
-        // temp.sort(); // sort into a logical ordering
         if (temp.length > 0) active = 0;
         this.setState({
           staleContacts: true,
@@ -605,6 +674,7 @@ export default class SceneTxtController extends React.Component {
   }
 
   // Group queries
+
   queryNewGroupMessages() {
     return this.state.toBeGroupRendered;
   }
@@ -633,6 +703,27 @@ export default class SceneTxtController extends React.Component {
     });
   }
 
+  // File data queries
+
+  queryFileStaleness() {
+    return this.state.staleFileRender;
+  }
+
+  updateFileRenderStaleness(newStaleness) {
+    this.setState({
+      staleFileRender: newStaleness,
+    });
+  }
+
+  queryFilesShared() {
+    return this.state.sharedFiles;
+  }
+
+  queryFileSharedIndex() {
+    return this.state.activeFile;
+  }
+  
+
   render() {
     return (
       <div>
@@ -653,11 +744,11 @@ export default class SceneTxtController extends React.Component {
         <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Send to Contact</button>
         <button class="btn" id="msg-add-group" onClick={(i) => this.handleGroupMessageAdd(i)}>Send to Group</button>
-        <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Camera Locking</button>
+        <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Key Locking</button>
         
         <div class="lock">Camera is currently {this.state.isCameraLocked ? 
-          'LOCKED - typing will not move the camera' : 'UNLOCKED - you can move in the world'}</div>
-        <div id="controls">WASD to move. QE to change active contact. Use the Toggle Camera Locking button when you want to type</div>
+          'LOCKED - typing will not move the camera' : 'UNLOCKED - you can interact with the world'}</div>
+        <div id="controls">WASD to move. QE changes active contact. ZC changes active group. Use the Toggle Key Locking button to toggle these controls.</div>
         <div id="liveinfo">{this.state.staleLiveInfo ? this.state.liveInfo 
           : 'Send messages to known usernames using the box at the top.'}</div>
         
@@ -681,6 +772,11 @@ export default class SceneTxtController extends React.Component {
             updateGroupRenderStaleness ={(stale) => this.updateGroupRenderStaleness(stale)}
             fetchGroups={() => this.queryGroups()}
             fetchGroupStaleness={() => this.queryGroupStaleness()}
+
+            getFileRenderStaleness={() => this.queryFileStaleness()}
+            updateFileRenderStaleness={() => this.updateFileRenderStaleness()}
+            fetchSharedFiles={() => this.queryFilesShared()}
+            getActiveFileIndex={() => this.queryFileSharedIndex()}
 
             isNewLogin={() => this.queryNewLogin()}
           />

@@ -22,6 +22,7 @@ export default class SceneTxt extends React.Component {
       movementsIn: this.props.movementsIn,
       createdSceneObj: [],
       createdSceneGroupObj: [],
+      currentFileObj : [],
     }
   }
 
@@ -100,7 +101,7 @@ export default class SceneTxt extends React.Component {
     tempcanvas.height = chatexture.height;
     tempcanvas.width = chatexture.width;
     const tempctx = tempcanvas.getContext('2d');
-    // TODO set alpha to false
+
     // text conditions for stuff generated on the fly
     tempctx.font = "24px Helvetica";
     tempctx.linewidth = 5;
@@ -287,6 +288,60 @@ export default class SceneTxt extends React.Component {
     return Math.atan2(facevector.x, facevector.z);
   }
 
+  updateFileScene() {
+    let activeFileI = this.props.getActiveFileIndex();
+    let activeFStr = (activeFileI >= 0 ? 
+      "File: " + this.props.fetchSharedFiles()[activeFileI].FileName + " from "
+      + this.props.fetchSharedFiles()[activeFileI].SharerUsername + " - Press F to download"
+      : 'No Shared Files');
+    let nextFStr = (activeFileI + 1 < this.props.fetchSharedFiles().length ? 
+      "Next: " + this.props.fetchSharedFiles()[activeFileI + 1].FileName
+      : 'No Next File');
+    let prevFStr = (activeFileI - 1 >= 0 ? 
+      "Prev: " + this.props.fetchSharedFiles()[activeFileI - 1].FileName
+      : 'No Previous File');
+
+      let geom = new THREE.BoxGeometry(6, 6, 2);
+      let mat = new THREE.MeshBasicMaterial({ color : this.randomLightColor() });
+      let newcube = new THREE.Mesh(geom, mat);
+
+      this.tempctx.clearRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
+      this.tempctx.fillStyle = "rgba(25,25,100,1)";
+      this.tempctx.fillRect(0, 0, this.tempcanvas.width, this.tempcanvas.height);
+      this.tempctx.fillStyle = "rgba(250,250,250,1)";
+
+      let filestrings = [prevFStr, activeFStr, nextFStr];
+      let space = 0;
+
+      filestrings.forEach(function(line) {
+          space += (this.linespacing * 2);
+          this.tempctx.fillText(line, 4, space);
+      }.bind(this));
+
+      // Dealing with async loading
+      this.tempcanvas.toBlob(function(blob) {
+        let imageUrl = URL.createObjectURL(blob);
+        new THREE.TextureLoader().load(imageUrl, function (texture) {
+          texture.needsUpdate = true;
+        
+          newcube.material.map = texture;
+      
+          newcube.position.z = 0;
+          newcube.position.x = 0;
+          newcube.position.y = this.camera.position.y;
+
+          this.scene.add(newcube);
+
+          this.setState((old) => ({
+            currentFileObj : [...old.currentFileObj, newcube],
+          }));
+          console.log("File action updated");
+        }.bind(this), undefined, function (err) {
+          console.error("Something bad happened while loading texture!");
+        });
+      }.bind(this));
+  }
+
   updateDirectMsgScene() {
     // TODO break this off into dedicated functions, it smells bad to repeat it
     // distance to place messages away from camera
@@ -329,7 +384,7 @@ export default class SceneTxt extends React.Component {
           newcube.position.z = this.camera.position.z + zOffset;
           newcube.position.x = this.camera.position.x + xOffset;
           newcube.position.y = this.camera.position.y;
-          console.log("Z" + zOffset + "X" + xOffset);
+
           newOffsetAngle += (Math.PI / 8);
           this.scene.add(newcube);
           this.setState((old) => ({
@@ -393,6 +448,23 @@ export default class SceneTxt extends React.Component {
 
   updateSceneRender() {
     // decide which aspects needs re-rendering.
+
+    if (this.props.getFileRenderStaleness()) {
+      // annihilate the old object if it exists.
+      let tempF = this.state.currentFileObj;
+      this.setState({
+        currentFileObj : [],
+      }, () => {
+        tempF.forEach(function(cubef) {
+          this.scene.remove(cubef);
+          cubef.geometry.dispose();
+          cubef.material.map.dispose();
+          cubef.material.dispose();
+        }.bind(this));
+      });
+      this.updateFileScene();
+      this.props.updateFileRenderStaleness(false);
+    }
 
     if (this.props.getRenderStaleness()) {
       // Remove old messages, we need them not.

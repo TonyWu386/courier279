@@ -56,47 +56,43 @@ const conn = mysql.createConnection({
 
 let warmCache = function(userId){
 
-    contacts_cache.flush((err) => {
-        if (err) throw err;
+    let args = [];
+    let query = `SELECT c.Owning_UserId, c.ContactId, c.DateAdded, ct.ContactType, ut.Username
+                FROM Contacts c
+                INNER JOIN Users ut
+                    ON ut.UserId = c.Target_UserId
+                INNER JOIN ContactTypes ct
+                    ON ct.ContactTypeId = c.ContactTypes_ContactTypeId`;
+    if (userId) {
+        query += ` WHERE c.Owning_UserId = ? `;
+        args = [userId];
+    }
+    query += ` ORDER BY c.DateAdded DESC`;
 
-        let args = [];
-        let query = `SELECT c.Owning_UserId, c.ContactId, c.DateAdded, ct.ContactType, ut.Username
-                    FROM Contacts c
-                    INNER JOIN Users ut
-                        ON ut.UserId = c.Target_UserId
-                    INNER JOIN ContactTypes ct
-                        ON ct.ContactTypeId = c.ContactTypes_ContactTypeId`;
-        if (userId) {
-            query += ` WHERE c.Owning_UserId = ? `;
-            args = [userId];
+    conn.query(query, args, (err, rows) => {
+        if (err) {
+            console.log("Cached warming failed");
+            throw err;
         }
-        query += ` ORDER BY c.DateAdded DESC`;
 
-        conn.query(query, args, (err, rows) => {
-            if (err) {
-                console.log("Cached warming failed");
-                throw err;
-            }
+        let mappings = {};
 
-            let mappings = {}
-
-            rows.forEach(element => {
-                if (!mappings[element.Owning_UserId]) (mappings[element.Owning_UserId] = {});
-                mappings[element.Owning_UserId][element.ContactId] = {}
-                mappings[element.Owning_UserId][element.ContactId].ContactId = element.ContactId;
-                mappings[element.Owning_UserId][element.ContactId].DateAdded = element.DateAdded;
-                mappings[element.Owning_UserId][element.ContactId].ContactType = element.ContactType;
-                mappings[element.Owning_UserId][element.ContactId].Username = element.Username;
-            });
-
-            Object.keys(mappings).forEach(key => {
-                contacts_cache.set(key, mappings[key], 0, (err) => {
-                    if (err) console.log(err);
-                });
-            });
-
-            console.log("Cache set", mappings);
+        rows.forEach(element => {
+            if (!mappings[element.Owning_UserId]) (mappings[element.Owning_UserId] = {});
+            mappings[element.Owning_UserId][element.ContactId] = {}
+            mappings[element.Owning_UserId][element.ContactId].ContactId = element.ContactId;
+            mappings[element.Owning_UserId][element.ContactId].DateAdded = element.DateAdded;
+            mappings[element.Owning_UserId][element.ContactId].ContactType = element.ContactType;
+            mappings[element.Owning_UserId][element.ContactId].Username = element.Username;
         });
+
+        Object.keys(mappings).forEach(key => {
+            contacts_cache.set(key, mappings[key], 0, (err) => {
+                if (err) console.log(err);
+            });
+        });
+
+        console.log("Cache set", mappings);
     });
 }
 
@@ -109,7 +105,11 @@ conn.connect((err) => {
     
         console.log('If the DB is working this will show 2: ', rows[0].solution);
 
-        warmCache(null);
+        contacts_cache.flush((err) => {
+            if (err) throw err;
+
+            warmCache(null);
+        });
 
         console.log('Cache is ready');
     });

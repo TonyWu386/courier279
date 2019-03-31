@@ -532,7 +532,7 @@ longpoll.create("/api/messages/direct/lp/:id/", (req, res, next) => {
 
 let getMessages = function(userId, target_username, username, callback) {
 
-    const query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername, m.DateSent
+    const query = `SELECT m.DirectMessageId, m.EncryptedText, u.Username SenderUsername, m.Nonce, m.DateSent
         FROM DirectMessages m
         INNER JOIN Users u
         ON m.Sender_UserId = u.UserId

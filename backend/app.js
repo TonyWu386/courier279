@@ -294,6 +294,18 @@ app.post('/api/signup/', sanitizeUsername, sanitizeSignup, function (req, res, n
 
 
 
+app.get('/api/signout/', function (req, res, next) {
+    res.setHeader('Set-Cookie', cookie.serialize('username', '', {
+          path : '/', 
+          maxAge: 60 * 60 * 24 * 7 // 1 week in number of seconds
+    }));
+
+    req.session.username = null;
+    req.session.userId = null;
+    return res.json("success");
+});
+
+
 
 /*
     Checks for

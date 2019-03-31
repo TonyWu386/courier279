@@ -14,8 +14,8 @@ export default class LoginPortal extends React.Component {
     super(props)
 
     this.state = {
-      username : null,
-      password : null,
+      username : '',
+      password : '',
     }
   }
 
@@ -98,6 +98,8 @@ export default class LoginPortal extends React.Component {
         this.props.setCryptData(pubkey, privkey);
         // this.state.username should be fine, perhaps we should use response?
         this.props.loginResponse(true, this.state.username);
+
+        this.clearFields();
       });
     }).catch((err) => {
       if (err.response.status == 401) this.props.loginError(err.response.data +
@@ -120,6 +122,8 @@ export default class LoginPortal extends React.Component {
       this.props.signupResponse(response.data + ", Good for you!");
       // this.state.username should be fine, perhaps we should use response?
       this.props.loginResponse(true, this.state.username);
+
+      this.clearFields();
       console.log("Success ", response);
     }).catch((err) => {
       if (err.response.status == 409) this.props.loginError("Sorry, but " + err.response.data);
@@ -135,11 +139,18 @@ export default class LoginPortal extends React.Component {
     });
   }
 
+  clearFields() {
+    this.setState({
+      username: '',
+      password: '',
+    });
+  }
+
   render() {
     return (
       <div>
-        Username<input type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'u')}/>
-        Password<input type="password" value={this.state.value} onChange={(i) => this.handleInputChange(i, 'p')}/>
+        Username<input type="text" value={this.state.username} onChange={(i) => this.handleInputChange(i, 'u')}/>
+        Password<input type="password" value={this.state.password} onChange={(i) => this.handleInputChange(i, 'p')}/>
         <button class="btn" onClick={() => this.EnrollUser()}>Enroll New User</button>
         <button class="btn" onClick={() => this.SigninUser()}>Sign in as Existing User</button>
       </div>

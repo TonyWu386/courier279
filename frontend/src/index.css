@@ -51,12 +51,6 @@ ol, ul {
   align-self: center;
 }
 
-.lock {
-  font: 14px "Century Gothic", Futura, sans-serif;
-  margin-bottom: 20px;
-  align-self: center;
-}
-
 #disabled-warn {
   position: absolute;
   width: 100%;
@@ -85,21 +79,29 @@ ol, ul {
 }
 
 #controls {
-  position: relative;
-	top: 40px;
+  position: absolute;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+	height: 100%;
   width: 100%;
 	text-align: center;
-	z-index: 100;
+	z-index: 99;
 	display:block;
 }
 
 #liveinfo {
   font: 18px "Century Gothic", Futura, sans-serif;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
   color: rgb(255, 119, 119);
   position: relative;
-	top: 40px;
+  top: 55px;
   width: 100%;
 	text-align: center;
-	z-index: 100;
+	z-index: 103;
 	display:block;
 }

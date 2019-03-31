@@ -27,7 +27,6 @@ export default class SceneTxtController extends React.Component {
 
     this.state = {
       txt: '',
-      target: '',
       contactField: '',
       sessionUname: '',
       sessionId: '',
@@ -100,14 +99,6 @@ export default class SceneTxtController extends React.Component {
     }
   }
 
-  handleContactChange(event) {
-    this.setState({
-      target : event.target.value,
-    }, () => {
-      console.log('target is ', this.state.target);
-    });
-  }
-
   handleContactAddChange(event) {
     this.setState({
       contactField : event.target.value,
@@ -142,6 +133,16 @@ export default class SceneTxtController extends React.Component {
     }
   }
   
+  handleNewSession(e) {
+    if (this.props.isUserLogin()) {
+      this.createNewSession();
+    } else {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "You must be logged in to create sessions",
+      });
+    }
+  }
 
   handleLock(event) {
     // just in case
@@ -462,10 +463,18 @@ export default class SceneTxtController extends React.Component {
   }
 
   pushUserMessage() {
-    //  corresponds to backend POST for this user
+    // Prevent sending if nobody selected.
+    if (this.state.activeContact == -1) {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Add a contact before sending messages",
+      });
+      return;
+    };
+    let sendtarget = this.state.contactList[this.state.activeContact].TargetUsername;
     // convert the message to a form the backend understands
 
-    axios.get(server + "/api/crypto/pubkey/?username=" + this.state.target)
+    axios.get(server + "/api/crypto/pubkey/?username=" + sendtarget)
     .then((response) => {
       let target_pubkey = util.decodeBase64(response.data.pubkey);
       let message_nonce = nacl.randomBytes(nacl.box.nonceLength);
@@ -477,7 +486,7 @@ export default class SceneTxtController extends React.Component {
       return axios.post(server + "/api/messages/direct/", {
         encrypted_body: util.encodeBase64(encrypted_message),
         nonce: util.encodeBase64(message_nonce),
-        target_username: this.state.target,
+        target_username: sendtarget,
       });
     }).then((res) => {
       this.setState({
@@ -630,7 +639,10 @@ export default class SceneTxtController extends React.Component {
 
   addUserToExisting() {
     if ((!this.state.sessionUname) || (!this.state.sessionId)) {
-      console.log("Need username and sessionId inputs");
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Need session ID and username to add",
+      });
       return;
     }
 
@@ -797,7 +809,7 @@ export default class SceneTxtController extends React.Component {
         <br />
 
         <h2>Session Management</h2>
-        <button onClick={() => this.createNewSession()}>New Session</button>
+        <button onClick={() => this.handleNewSession()}>New Session</button>
         <button onClick={() => this.addUserToExisting()}>Add User To Existing</button>
         <h4>Username</h4>
         <input type="text" value={this.state.sessionUname} onChange={(i) => this.handleSessionInputChange(i,'u')}/>
@@ -805,19 +817,18 @@ export default class SceneTxtController extends React.Component {
         <input type="text" value={this.state.sessionId} onChange={(i) => this.handleSessionInputChange(i,'s')}/>
         <br />
 
-        <input id="content-msg" type="text" value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
-        <input id="target-msg" type="text" value={this.state.value} onChange={(i) => this.handleContactChange(i)}/>
-        <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Send to Contact</button>
+        <input id="content-msg" type="text" placeholder="Start typing a message..." value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
+        <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Send to Selected Contact</button>
         <button class="btn" id="msg-add-group" onClick={(i) => this.handleGroupMessageAdd(i)}>Send to Group</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Key Locking</button>
         
-        <div class="lock">Camera is currently {this.state.isCameraLocked ? 
-          'LOCKED - typing will not move the camera' : 'UNLOCKED - you can interact with the world'}</div>
-        <div id="controls">WASD to move. QE changes active contact. ZC changes active group. Use the Toggle Key Locking button to toggle these controls.</div>
-        <div id="liveinfo">{this.state.staleLiveInfo ? this.state.liveInfo 
-          : 'Send messages to known usernames using the box at the top.'}</div>
-        
         <div id='scene-container'>
+          <div id="liveinfo">{this.state.staleLiveInfo ? this.state.liveInfo 
+            : 'Send messages to known usernames using the box at the top.'}</div>
+          <div id="controls">WASD to move. QE changes active contact. ZC changes active group. 
+          Use the Toggle Key Locking button to toggle these controls. Currently, they are {this.state.isCameraLocked ? 
+            'LOCKED - typing will not move the camera' : 'UNLOCKED - you can interact with the world'}</div>
+
           {!(this.props.isUserLogin()) &&
             <div id='disabled-warn'>Login to enable interaction...</div>
           }

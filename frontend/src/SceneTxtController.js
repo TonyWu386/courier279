@@ -183,15 +183,19 @@ export default class SceneTxtController extends React.Component {
   }
 
   // for nav through group submenu
-  // TODO complete and hook
   handleGroupNav(event) {
     if (!this.state.isCameraLocked && this.state.activeGroup != -1) {
       let activeG = this.state.activeGroup;
       switch(event.key) {
         case 'c': 
                   if (activeG < Object.keys(this.state.groupSessions).length - 1) {
+                    let keyind = Object.keys(this.state.groupSessions).findIndex(function(key) {
+                      return key === activeG;
+                    });
+                    let newSes = Object.keys(this.state.groupSessions)[keyind + 1];
+
                     this.setState({
-                      activeGroup : activeG + 1,
+                      activeGroup : newSes,
                     }, () => {
                       this.fetchGroupMessage();
                     }); 
@@ -199,8 +203,13 @@ export default class SceneTxtController extends React.Component {
 
         case 'z': 
                   if (activeG > 0) {
+                    let keyind = Object.keys(this.state.groupSessions).findIndex(function(key) {
+                      return key === activeG;
+                    });
+                    let newSes = Object.keys(this.state.groupSessions)[keyind - 1];
+
                     this.setState({
-                      activeGroup : activeG - 1,
+                      activeGroup : newSes,
                     }, () => {
                       this.fetchGroupMessage();
                     });
@@ -539,7 +548,13 @@ export default class SceneTxtController extends React.Component {
 
   pushGroupMessage() {
     // Figure out the active group
-    if (this.state.activeGroup == -1) return;
+    if (this.state.activeGroup == -1) {
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "You aren't part of any groups yet",
+      });
+      return;
+    };
     let targetGroupKey = this.state.groupSessions[this.state.activeGroup];
     if (targetGroupKey === null) { console.error("Could not send. Error obtaining Key."); return;}
 
@@ -621,7 +636,7 @@ export default class SceneTxtController extends React.Component {
     })
     .then((response) => {
 
-
+      this.fetchUserSessionList();
       // This stores the group session key globally, so it can be used for this session's messages later
       this.addGroupSessionCryptData(response.data.sessionId, session_key);
 
@@ -819,7 +834,7 @@ export default class SceneTxtController extends React.Component {
 
         <input id="content-msg" type="text" placeholder="Start typing a message..." value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>
         <button class="btn" id="msg-add" onClick={(i) => this.handleAdd(i)}>Send to Selected Contact</button>
-        <button class="btn" id="msg-add-group" onClick={(i) => this.handleGroupMessageAdd(i)}>Send to Group</button>
+        <button class="btn" id="msg-add-group" onClick={(i) => this.handleGroupMessageAdd(i)}>Send to Selected Group</button>
         <button class="btn" id="lock-view" onClick={(i) => this.handleLock(i)}>Toggle Key Locking</button>
         
         <div id='scene-container'>

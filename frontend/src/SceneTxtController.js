@@ -19,6 +19,7 @@ export default class SceneTxtController extends React.Component {
 
     this.pushUserMessage = this.pushUserMessage.bind(this);
     this.fetchUserMessages = this.fetchUserMessages.bind(this);
+    this.refreshUserMessages = this.refreshUserMessages.bind(this);
 
     this.handleKeyD = this.handleKeyDown.bind(this);
     this.handleKeyU = this.handleKeyUp.bind(this);
@@ -32,7 +33,7 @@ export default class SceneTxtController extends React.Component {
       sessionId: '',
       movements: {forward: false, backward: false, right: false, left: false},
       isCameraLocked: true,
-      hasBeenChanged: false, // currently unused. Will want later
+      openPolls: {}, // polls currently open, so we don't open too much
       staleLiveInfo: false,
       liveInfo: '',
 
@@ -320,6 +321,7 @@ export default class SceneTxtController extends React.Component {
           staleContacts: true,
           contactList: temp,
           activeContact : active,
+          openPolls: {},
         }, () => {
           // callback on whose msgs to display
           this.fetchUserMessages();
@@ -388,11 +390,75 @@ export default class SceneTxtController extends React.Component {
         staleRender : true,
       });
 
+      // do some checks and determine whether to open a new long poll request
+      if (!this.state.openPolls[contactTar]) {
+        this.refreshUserMessages();
+      }
+
       console.log("Got following direct messages from DB" + response.data);
     }).catch((err) => {
       console.log("Messed up while getting user msgs " + err.response.data);
     });
     
+  }
+
+  refreshUserMessages() {
+    if (this.state.activeContact == -1) {
+      this.setState({
+        toBeRendered: [],
+        staleRender : true,
+      });
+      return;
+    };
+
+    console.log("Longpoll opening " + this.state.openPolls);
+    let calltimeActiveContact = this.state.contactList[this.state.activeContact].TargetUsername;
+
+    // make sure we're not going to be opening redundant long polls
+    this.setState(oldState => ({
+      openPolls : {
+        ...oldState.openPolls,
+        [calltimeActiveContact]: true},
+    }));
+
+    // we may get longpoll requests from an older active contact. Just discard these.
+    axios.get(server + "/api/messages/direct/lp/" + this.props.getUserName() + "_" + calltimeActiveContact + "/")
+      .then((res) => {
+        console.log("DM Longpolling was responded to");
+        // if this is a response to a contact we no longer care about, discard it
+        if (calltimeActiveContact == this.state.contactList[this.state.activeContact].TargetUsername) {
+
+          axios.get(server + "/api/crypto/pubkey/?username=" + calltimeActiveContact)
+          .then((reskeys) => {
+            const ecdh_shared_secret = nacl.box.before(util.decodeBase64(reskeys.data.pubkey), this.props.getUserPrivKey());
+
+            let newMessage = [];
+            res.data.forEach(msg => {
+              const decrypted_text = nacl.box.open.after(util.decodeBase64(msg.EncryptedText), util.decodeBase64(msg.Nonce), ecdh_shared_secret);
+      
+              // set stuff that needs to be passed down to renderer
+              newMessage.push({sender : msg.SenderUsername, text : " " + util.encodeUTF8(decrypted_text)});
+            });
+      
+            this.setState({
+              toBeRendered: newMessage,
+              staleRender : true,
+            });
+
+            // keeps calling itself to open a new longpoll request
+            this.refreshUserMessages();
+          });
+        } else {
+          // this longpoll was discarded and kept dead
+          this.setState(oldState => ({
+            openPolls : {
+              ...oldState.openPolls,
+              [calltimeActiveContact]: false},
+          }));
+        }
+      }).catch((err) => {
+        console.log(err);
+      });
   }
 
   pushUserMessage() {
@@ -545,7 +611,6 @@ export default class SceneTxtController extends React.Component {
       nonce : util.encodeBase64(nonce),
     })
     .then((response) => {
-      // TODO update the active list of group sessions
 
 
       // This stores the group session key globally, so it can be used for this session's messages later

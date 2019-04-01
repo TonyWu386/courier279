@@ -30,13 +30,13 @@ Courier279 offers a unique 3-D user experience:
 
 ### Final Features
 
-- Secure file sharing with flexible permissions
+- Secure file sharing with flexible permissions, encryption transparent to the user
 
-- Manage group chats and sharing
+- Manage encrypted group chats and sharing
 
 - Smart updating of contact messages
 
-- Cycle through contacts and group sessions using keybinds alone - no standard button elements used
+- Quickly cycle through contacts and group sessions using keybinds alone - no standard button elements used
 
 ### Technologies
 
@@ -61,7 +61,7 @@ Courier279 offers a unique 3-D user experience:
   - Caching via *Memcached*
   - Uses *Long Polling* for seamless updates between users
 
-- Automated deployment via Docker
+- Automated deployment via *Docker*, static files served by *Nginx* with reverse-proxy to *Express* servers
 
 ### Challenges expected
 

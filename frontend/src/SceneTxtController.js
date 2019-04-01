@@ -10,7 +10,7 @@ import SceneTxt from './SceneTxt.js';
 // ========== TODO ============ change this for production
 // ATTENTION change the port to 8888 if using the Nginx reverse proxy
 // const server = "http://localhost:8888";
-const server = "http://localhost:3000";
+const server = "https://www.c279.ml";
 
 
 export default class SceneTxtController extends React.Component {

@@ -21,8 +21,7 @@ let upload_pro = multer({dest: path.join(__dirname, 'profile_picture_uploads')})
 
 
 const corsOptions = {
-    // first one is for docker, the second bare-metal
-    origin: ['http://10.0.0.2:3000', 'http://localhost:3000'],
+    origin: ['https://c279.ml', 'https://www.c279.ml'],
     optionsSuccessStatus: 200
 }
 

@@ -9,7 +9,7 @@ import SceneTxtCtrl from './SceneTxtController.js';
 import LoginPortal from './LoginPortal.js';
 
 import axios from 'axios';
-const server = "http://localhost:3000";
+const server = "https://www.c279.ml";
 
 
 

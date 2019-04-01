@@ -216,8 +216,14 @@ export default class SceneTxt extends React.Component {
     let prevContactStr = (activeI - 1 >= 0 ? 
       "Prev: " + this.props.fetchContact()[activeI - 1].TargetUsername
       : 'There is no Previous Contact');
+    
+    let activeG = this.props.getActiveGroup();
 
-    let uiInfo = [prevContactStr, activeContactStr, nextContactStr];
+    let groupActive = (activeG >= 0 ? 
+      "Active Group is: " + activeG
+      : 'You are not part of any groups yet');
+
+    let uiInfo = [groupActive, prevContactStr, activeContactStr, nextContactStr];
 
     let uiSpace = 0;
     uiInfo.forEach(function(line) {
@@ -253,6 +259,11 @@ export default class SceneTxt extends React.Component {
     this.state.createdSceneObj.forEach(function(cubemsg) {
       // slow rotation of sent messages.
       cubemsg.rotation.y += 0.001;
+    }.bind(this));
+
+    this.state.createdSceneGroupObj.forEach(function(cubemsg) {
+      // slow rotation of sent messages.
+      cubemsg.rotation.y += -0.001;
     }.bind(this));
 
     this.renderScene();
@@ -428,9 +439,9 @@ export default class SceneTxt extends React.Component {
           texture.needsUpdate = true;
         
           newcube.material.map = texture;
-          newcube.position.z = this.camera.position.z - 12;
+          newcube.position.z = this.camera.position.z - 8;
           newcube.position.x = this.camera.position.x + newOffset;
-          newcube.position.y = this.camera.position.y + 2;
+          newcube.position.y = this.camera.position.y - 1;
 
           newOffset += 5;
           this.scene.add(newcube);

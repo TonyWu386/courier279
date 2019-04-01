@@ -24,6 +24,7 @@ export default class SceneTxtController extends React.Component {
     this.handleKeyD = this.handleKeyDown.bind(this);
     this.handleKeyU = this.handleKeyUp.bind(this);
     this.handleKeyQE = this.handleContactNav.bind(this);
+    this.handleKeyZC = this.handleGroupNav.bind(this);
 
     this.state = {
       txt: '',
@@ -60,6 +61,7 @@ export default class SceneTxtController extends React.Component {
     document.addEventListener('keydown', this.handleKeyD, false);
     document.addEventListener('keyup', this.handleKeyU, false);
     document.addEventListener('keyup', this.handleKeyQE, false);
+    document.addEventListener('keyup', this.handleKeyZC, false);
     // add to parent's observer list
     this.props.addNewLoginObserver(function() {
       // simple mirroring of state
@@ -77,6 +79,7 @@ export default class SceneTxtController extends React.Component {
     document.removeEventListener('keydown', this.handleKeyD, false);
     document.removeEventListener('keyup', this.handleKeyU, false);
     document.removeEventListener('keyup', this.handleKeyQE, false);
+    document.removeEventListener('keyup', this.handleKeyZC, false);
   }
 
   handleInputChange(event) {
@@ -186,32 +189,33 @@ export default class SceneTxtController extends React.Component {
   handleGroupNav(event) {
     if (!this.state.isCameraLocked && this.state.activeGroup != -1) {
       let activeG = this.state.activeGroup;
+      let keyind = Object.keys(this.state.groupSessions).findIndex(function(key) {
+        return key === activeG;
+      });
       switch(event.key) {
         case 'c': 
-                  if (activeG < Object.keys(this.state.groupSessions).length - 1) {
-                    let keyind = Object.keys(this.state.groupSessions).findIndex(function(key) {
-                      return key === activeG;
-                    });
+                  if (keyind < Object.keys(this.state.groupSessions).length - 1) {
+                    
                     let newSes = Object.keys(this.state.groupSessions)[keyind + 1];
 
                     this.setState({
                       activeGroup : newSes,
                     }, () => {
                       this.fetchGroupMessage();
+                      console.log(newSes + "is the group");
                     }); 
                   } break;
 
         case 'z': 
-                  if (activeG > 0) {
-                    let keyind = Object.keys(this.state.groupSessions).findIndex(function(key) {
-                      return key === activeG;
-                    });
+                  if (keyind > 0) {
+                    
                     let newSes = Object.keys(this.state.groupSessions)[keyind - 1];
 
                     this.setState({
                       activeGroup : newSes,
                     }, () => {
                       this.fetchGroupMessage();
+                      console.log(newSes + "is the group");
                     });
                   } break;
         default:
@@ -700,6 +704,10 @@ export default class SceneTxtController extends React.Component {
       });
     }).then((res) => {
       // TODO I am fairly certain this produces a change in the session key. Refetch
+      this.setState({
+        staleLiveInfo: true,
+        liveInfo: "Added user to group",
+      });
       console.log("Successfully added user to existing session");
     }).catch((err) => {
       console.log(err);
@@ -785,6 +793,10 @@ export default class SceneTxtController extends React.Component {
     return this.state.groupSessions;
   }
 
+  queryActiveGroup() {
+    return this.state.activeGroup;
+  }
+
   queryGroupStaleness() {
     return this.state.staleGroups;
   }
@@ -866,6 +878,7 @@ export default class SceneTxtController extends React.Component {
             updateGroupRenderStaleness ={(stale) => this.updateGroupRenderStaleness(stale)}
             fetchGroups={() => this.queryGroups()}
             fetchGroupStaleness={() => this.queryGroupStaleness()}
+            getActiveGroup={() => this.queryActiveGroup()}
 
             getFileRenderStaleness={() => this.queryFileStaleness()}
             updateFileRenderStaleness={() => this.updateFileRenderStaleness()}

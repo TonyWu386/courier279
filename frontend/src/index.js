@@ -346,6 +346,15 @@ class Webapp extends React.Component {
     console.log("Update detected");
   }
 
+  handleLogout() {
+    axios.get(server + "/api/signout/")
+    .then((response) => {
+      this.handleLoginResponse(false, "");
+    }).catch((err) => {
+      console.log(err);
+    });
+  }
+
   // The below are funcs passed to login for communicating with us
 
   handleLoginResponse(loginState, unameNew) {
@@ -418,6 +427,19 @@ class Webapp extends React.Component {
   }
 
   render() {
+    let loginfragment;
+    // conditional rendering based on login status
+    if (!this.queryLoginStatus()) {
+      loginfragment = <LoginPortal
+      setCryptData={(pubkey, privkey) => this.setCryptData(pubkey, privkey)}
+      loginResponse={(loginState, unameNew) => this.handleLoginResponse(loginState, unameNew) }
+      loginError={(errmsg) => this.handleLoginErr(errmsg)}
+      signupResponse={(feedmsg) => this.handleSignupFeedback(feedmsg)}
+      />;
+    } else {
+      loginfragment = <button class="btn" onClick={() => this.handleLogout()}>Logout?</button>;
+    }
+
 
     return (
       <div className="contain-all">
@@ -429,13 +451,9 @@ class Webapp extends React.Component {
             'Logged in as ' + this.state.uname}</div>
         <br />
         <div className="login-contain">
-          <div className="instructext">Sign in to view messages</div>
-          <LoginPortal
-            setCryptData={(pubkey, privkey) => this.setCryptData(pubkey, privkey)}
-            loginResponse={(loginState, unameNew) => this.handleLoginResponse(loginState, unameNew) }
-            loginError={(errmsg) => this.handleLoginErr(errmsg)}
-            signupResponse={(feedmsg) => this.handleSignupFeedback(feedmsg)}
-          />
+          <div className="instructext">{this.state.uname === '' ?
+          "Sign in to view messages" : "You have signed in. Environment has been unlocked."}</div>
+          {loginfragment}
           <br />
           <div class="login-error">{this.state.staleErr ? 
           this.state.error : 
@@ -451,7 +469,7 @@ class Webapp extends React.Component {
               addNewLoginObserver={(func) => this.watchNewLogin(func)}
             />
         </div>
-        <div>
+        <div className="box-manage">
           <FileUp
             getUserPubKey={() => this.queryUserPubKey()}
             getUserPrivKey={() => this.queryUserPrivKey()}

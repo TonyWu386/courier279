@@ -149,8 +149,8 @@ export default class LoginPortal extends React.Component {
   render() {
     return (
       <div>
-        Username<input type="text" value={this.state.username} onChange={(i) => this.handleInputChange(i, 'u')}/>
-        Password<input type="password" value={this.state.password} onChange={(i) => this.handleInputChange(i, 'p')}/>
+        Username<input class="login-e" type="text" value={this.state.username} onChange={(i) => this.handleInputChange(i, 'u')}/>
+        Password<input class="login-e" type="password" value={this.state.password} onChange={(i) => this.handleInputChange(i, 'p')}/>
         <button class="btn" onClick={() => this.EnrollUser()}>Enroll New User</button>
         <button class="btn" onClick={() => this.SigninUser()}>Sign in as Existing User</button>
       </div>

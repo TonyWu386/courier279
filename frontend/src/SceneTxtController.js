@@ -819,17 +819,20 @@ export default class SceneTxtController extends React.Component {
   render() {
     return (
       <div>
+        <div className='box-manage'>
+          <h2>Session Management</h2>
+          <button class="btn" onClick={() => this.handleNewSession()}>New Session</button>
+          
+          <h4>Username</h4>
+          <input type="text" value={this.state.sessionUname} onChange={(i) => this.handleSessionInputChange(i,'u')}/>
+          <h4>SessionID</h4>
+          <input type="text" value={this.state.sessionId} onChange={(i) => this.handleSessionInputChange(i,'s')}/>
+          <br />
+          <button class="btn" onClick={() => this.addUserToExisting()}>Add User To Existing</button>
+        </div>
+
         <input id="contact-type" type="text" value={this.state.contactField} onChange={(i) => this.handleContactAddChange(i)}/>
         <button class="btn" id="contact-add" onClick={() => this.updateUserContactList()}>Add a contact</button>
-        <br />
-
-        <h2>Session Management</h2>
-        <button onClick={() => this.handleNewSession()}>New Session</button>
-        <button onClick={() => this.addUserToExisting()}>Add User To Existing</button>
-        <h4>Username</h4>
-        <input type="text" value={this.state.sessionUname} onChange={(i) => this.handleSessionInputChange(i,'u')}/>
-        <h4>SessionID</h4>
-        <input type="text" value={this.state.sessionId} onChange={(i) => this.handleSessionInputChange(i,'s')}/>
         <br />
 
         <input id="content-msg" type="text" placeholder="Start typing a message..." value={this.state.value} onChange={(i) => this.handleInputChange(i)}/>

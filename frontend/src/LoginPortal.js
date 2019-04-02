@@ -32,7 +32,6 @@ export default class LoginPortal extends React.Component {
             encoding: 'binary'
     }, (secret_client_sym_key) => {
 
-      console.log(secret_client_sym_key);
 
       const server_auth_key = nacl.hash(util.decodeUTF8('server_auth' + this.state.password));
   
@@ -84,7 +83,7 @@ export default class LoginPortal extends React.Component {
       const enc_privkey_nonce = util.decodeBase64(response.data.EncryptedPrivKeyNonce);
       const client_sym_kdf_salt = util.decodeBase64(response.data.ClientSymKdfSalt);
 
-      console.log("Signed in and extracted", pubkey, enc_privkey, enc_privkey_nonce);
+
 
       scrypt(("client_sym" + this.state.password), client_sym_kdf_salt, {
         N: 16384,
@@ -124,7 +123,6 @@ export default class LoginPortal extends React.Component {
       this.props.loginResponse(true, this.state.username);
 
       this.clearFields();
-      console.log("Success ", response);
     }).catch((err) => {
       if (err.response.status == 409) this.props.loginError("Sorry, but " + err.response.data);
       else this.props.loginError("MySQL server had an accident: " + err.response.data);

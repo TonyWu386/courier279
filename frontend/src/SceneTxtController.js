@@ -86,7 +86,6 @@ export default class SceneTxtController extends React.Component {
     this.setState({
       txt : event.target.value,
     }, () => {
-      console.log('says ', this.state.txt);
     });
   }
 
@@ -106,7 +105,6 @@ export default class SceneTxtController extends React.Component {
     this.setState({
       contactField : event.target.value,
     }, () => {
-      console.log('contact add contains ', this.state.contactField);
     });
   }
 
@@ -155,7 +153,6 @@ export default class SceneTxtController extends React.Component {
       // XOR with 1, should act as a toggle
       isCameraLocked : (old.isCameraLocked ^ 1) === 1,
     }), () => {
-      console.log('Camera Locked ', this.state.isCameraLocked);
       // if locked while moving, the camera can get stuck. prevent that here.
       if (this.state.isCameraLocked) {
         let temp = {...this.state.movements};
@@ -202,7 +199,6 @@ export default class SceneTxtController extends React.Component {
                       activeGroup : newSes,
                     }, () => {
                       this.fetchGroupMessage();
-                      console.log(newSes + "is the group");
                     }); 
                   } break;
 
@@ -215,7 +211,6 @@ export default class SceneTxtController extends React.Component {
                       activeGroup : newSes,
                     }, () => {
                       this.fetchGroupMessage();
-                      console.log(newSes + "is the group");
                     });
                   } break;
         default:
@@ -234,7 +229,6 @@ export default class SceneTxtController extends React.Component {
                       activeContact : activeC + 1,
                     }, () => {
                       this.fetchUserMessages();
-                      console.log('E up' + this.state.activeContact);
                     }); 
                   } break;
 
@@ -244,7 +238,6 @@ export default class SceneTxtController extends React.Component {
                       activeContact : activeC - 1,
                     }, () => {
                       this.fetchUserMessages();
-                      console.log('Q up' + this.state.activeContact);
                     });
                   } break;
         default:
@@ -258,19 +251,19 @@ export default class SceneTxtController extends React.Component {
       switch(event.key) {
         case 'w': 
                   temp.forward = true;
-                  this.setState({movements : temp,}, () => {console.log('W down');}); break;
+                  this.setState({movements : temp,}); break;
 
         case 'a': 
                   temp.left = true;
-                  this.setState({movements : temp,}, () => {console.log('A down');}); break;
+                  this.setState({movements : temp,}); break;
 
         case 's': 
                   temp.backward = true;
-                  this.setState({movements : temp,}, () => {console.log('S down');}); break;
+                  this.setState({movements : temp,}); break;
 
         case 'd': 
                   temp.right = true;
-                  this.setState({movements : temp,}, () => {console.log('D down');}); break;
+                  this.setState({movements : temp,}); break;
 
         default:
       }
@@ -283,19 +276,19 @@ export default class SceneTxtController extends React.Component {
       switch(event.key) {
         case 'w': 
                   temp.forward = false;
-                  this.setState({movements : temp,}, () => {console.log('W up');}); break;
+                  this.setState({movements : temp,}); break;
 
         case 'a': 
                   temp.left = false;
-                  this.setState({movements : temp,}, () => {console.log('A up');}); break;
+                  this.setState({movements : temp,}); break;
 
         case 's': 
                   temp.backward = false;
-                  this.setState({movements : temp,}, () => {console.log('S up');}); break;
+                  this.setState({movements : temp,}); break;
 
         case 'd': 
                   temp.right = false;
-                  this.setState({movements : temp,}, () => {console.log('D up');}); break;
+                  this.setState({movements : temp,}); break;
 
         default:
       }
@@ -340,7 +333,6 @@ export default class SceneTxtController extends React.Component {
           // callback on whose msgs to display
           this.fetchUserMessages();
         });
-        console.log("contact list is " + temp);
       }).catch((err) => {
         console.error(err.response.data);
       });
@@ -409,7 +401,6 @@ export default class SceneTxtController extends React.Component {
         this.refreshUserMessages();
       }
 
-      console.log("Got following direct messages from DB" + response.data);
     }).catch((err) => {
       console.log("Messed up while getting user msgs " + err.response.data);
     });
@@ -425,7 +416,6 @@ export default class SceneTxtController extends React.Component {
       return;
     };
 
-    console.log("Longpoll opening " + this.state.openPolls);
     let calltimeActiveContact = this.state.contactList[this.state.activeContact].TargetUsername;
 
     // make sure we're not going to be opening redundant long polls
@@ -438,7 +428,6 @@ export default class SceneTxtController extends React.Component {
     // we may get longpoll requests from an older active contact. Just discard these.
     axios.get(server + "/api/messages/direct/lp/" + this.props.getUserName() + "_" + calltimeActiveContact + "/")
       .then((res) => {
-        console.log("DM Longpolling was responded to");
         // if this is a response to a contact we no longer care about, discard it
         if (calltimeActiveContact == this.state.contactList[this.state.activeContact].TargetUsername) {
 
@@ -544,7 +533,6 @@ export default class SceneTxtController extends React.Component {
           // callback on the group messages to display
           this.fetchGroupMessage()
         });
-        console.log("Fetch sessions success " + Object.keys(temp));
       }).catch((err) => {
         console.error(err.response.data);
       });
@@ -578,7 +566,6 @@ export default class SceneTxtController extends React.Component {
         liveInfo: "Sent Message to Group" + this.state.activeGroup,
       });
       this.fetchGroupMessage();
-      console.log(res.data);
     }).catch((err) => {
       this.setState({
         staleLiveInfo: true,
@@ -618,7 +605,7 @@ export default class SceneTxtController extends React.Component {
         staleGroupRender : true,
       });
 
-      console.log("Got following group messages on" + this.state.activeGroup + " - " + newGroupMessage);
+      
     }).catch((err) => {
       
       console.log("Messed up while getting group msgs - " + err.response.data);
@@ -649,7 +636,7 @@ export default class SceneTxtController extends React.Component {
         liveInfo: "Created new group session. It has ID " + response.data.sessionId,
       });
 
-      console.log("Created new group session with id " + response.data.sessionId);
+      
     }).catch((err) => {
       console.log(err);
     });
@@ -708,7 +695,7 @@ export default class SceneTxtController extends React.Component {
         staleLiveInfo: true,
         liveInfo: "Added user to group",
       });
-      console.log("Successfully added user to existing session");
+      
     }).catch((err) => {
       console.log(err);
     });
@@ -720,7 +707,7 @@ export default class SceneTxtController extends React.Component {
         ...oldSessions.groupSessions,
         [sessionId]: key},
     }));
-    console.log("Group sessions ", this.state.groupSessions);
+    
   }
 
   queryTxt() {

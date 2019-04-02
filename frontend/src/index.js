@@ -53,7 +53,6 @@ class GroupSession extends React.Component {
       // This stores the group session key globally, so it can be used for this session's messages later
       this.props.addGroupSessionCryptData(response.data.sessionId, session_key);
 
-      console.log("Created new group session with id " + response.data.sessionId);
     }).catch((err) => {
       console.log(err);
     });
@@ -62,7 +61,6 @@ class GroupSession extends React.Component {
 
   addUserToExisting() {
     if ((!this.state.username) || (!this.state.sessionId)) {
-      console.log("Need username and sessionId inputs");
       return;
     }
 
@@ -99,7 +97,6 @@ class GroupSession extends React.Component {
         'username_to_add': username,
       });
     }).then((res) => {
-      console.log("Success added user to existing session");
     }).catch((err) => {
       console.log(err);
     });
@@ -138,7 +135,6 @@ class FileUp extends React.Component {
   getAvailableFiles() {
     axios.get(server + "/api/file/share/")
     .then((response) => {
-      console.log(response);
     }).catch((error) => {
       console.log(error);
     });
@@ -165,7 +161,6 @@ class FileUp extends React.Component {
 
           const encrypted_encryption_key_nonce = nacl.randomBytes(nacl.box.nonceLength);
 
-          console.log(pubkey, privkey);
           const encrypted_encryption_key = nacl.box(random_key, encrypted_encryption_key_nonce, pubkey, privkey);
 
           formData.append('encrypted_file', new Blob([encrypted_file]));
@@ -182,7 +177,6 @@ class FileUp extends React.Component {
 
           axios.post(server + "/api/file/upload/", formData, config)
           .then((response) => {
-            console.log("The file is successfully uploaded");
             callback(null, "The file is successfully uploaded");
           }).catch((error) => {
             console.log(error);
@@ -205,14 +199,12 @@ class FileUp extends React.Component {
         responseType: 'arraybuffer',
       })
       .then((response) => {
-        console.log("The file is successfully downloaded", response);
 
         encrypted_file_blob = new Uint8Array(response.data);
 
         return axios.get(server + "/api/file/" + this.state.fileId + "/header/");
       }).then((response) => {
 
-        console.log("The file header is successfully downloaded", response);
 
         const nonce = util.decodeBase64(response.data.Nonce);
         const encrypted_encryption_key = util.decodeBase64(response.data.EncryptedEncryptionKey);
@@ -224,7 +216,6 @@ class FileUp extends React.Component {
         const file_encryption_key = nacl.box.open(encrypted_encryption_key, encrypted_encryption_key_nonce, pubkey, privkey);
         const decryptedFile = nacl.secretbox.open(encrypted_file_blob, nonce, file_encryption_key);
 
-        console.log("Decryption complete", decryptedFile);
 
         const url = window.URL.createObjectURL(new Blob([decryptedFile]));
         const link = document.createElement('a');
@@ -247,7 +238,6 @@ class FileUp extends React.Component {
 
         return axios.get(server + "/api/file/" + this.state.fileId + "/header/");
       }).then((response) => {
-        console.log("The file header is successfully downloaded", response);
 
         const encrypted_encryption_key = util.decodeBase64(response.data.EncryptedEncryptionKey);
         const encrypted_encryption_key_nonce = util.decodeBase64(response.data.EncryptedEncryptionKeyNonce);
@@ -266,7 +256,6 @@ class FileUp extends React.Component {
           fileId: this.state.fileId,
         });
       }).then((response) => {
-        console.log(response);
       }).catch((error) => {
         console.log(error);
       });
@@ -341,9 +330,7 @@ class Webapp extends React.Component {
       this.setState({
         newLogin: false,
       });
-      console.log("New login detected");
     }
-    console.log("Update detected");
   }
 
   handleLogout() {
@@ -417,7 +404,6 @@ class Webapp extends React.Component {
       pubkey: pubkey,
       privkey: privkey,
     });
-    console.log("Set crypt info in index.js done");
   }
 
   watchNewLogin(func) {

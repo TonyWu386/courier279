@@ -129,7 +129,6 @@ export default class SceneTxt extends React.Component {
       floor.translate(0,-3,0);
       let floormesh = new THREE.Mesh(floor, floormaterial);
       scene.add(floormesh);
-      console.log("loaded floor");
     });
 
     // add basic elements now
@@ -346,7 +345,6 @@ export default class SceneTxt extends React.Component {
           this.setState((old) => ({
             currentFileObj : [...old.currentFileObj, newcube],
           }));
-          console.log("File action updated");
         }.bind(this), undefined, function (err) {
           console.error("Something bad happened while loading texture!");
         });
@@ -401,7 +399,6 @@ export default class SceneTxt extends React.Component {
           this.setState((old) => ({
             createdSceneObj : [...old.createdSceneObj, newcube],
           }));
-          console.log("Updated cubes dynamically - there are " + this.state.createdSceneObj.length);
         }.bind(this), undefined, function (err) {
           console.error("Something bad happened while loading texture!");
         });
@@ -448,7 +445,6 @@ export default class SceneTxt extends React.Component {
           this.setState((old) => ({
             createdSceneGroupObj : [...old.createdSceneGroupObj, newcube],
           }));
-          console.log("Updated Group cubes dynamically - there are " + this.state.createdSceneGroupObj.length);
         }.bind(this), undefined, function (err) {
           console.error("Something bad happened while loading texture!");
         });
@@ -496,7 +492,6 @@ export default class SceneTxt extends React.Component {
       this.updateDirectMsgScene();
       // clear render state
       this.props.updateRenderStaleness(false);
-      console.log("Redrew stale directmsgs");
     }
 
     if (this.props.getGroupRenderStaleness()) {
@@ -515,7 +510,6 @@ export default class SceneTxt extends React.Component {
 
       this.updateGroupMsgScene();
       this.props.updateGroupRenderStaleness(false);
-      console.log("Redrew stale groups");
     }
 
   }

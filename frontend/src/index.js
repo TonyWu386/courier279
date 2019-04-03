@@ -127,7 +127,9 @@ class FileUp extends React.Component {
         file_name: null,
         fileId: null,
         username: null,
-        feedback: "Note ID when uploading. You need it to download later."
+        selectIdx: 0,
+        available: [],
+        feedback: "Press button to check files",
     };
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.onChange = this.onChange.bind(this);
@@ -136,24 +138,49 @@ class FileUp extends React.Component {
   getAvailableFiles() {
     axios.get(server + "/api/file/share/")
     .then((response) => {
+      this.setState({
+        available : response.data,
+        feedback : "You have " + response.data.length + " files"
+      });
+      if (response.data.length > 0) {
+        this.setState({
+          feedback : this.state.feedback + " - selected for action file " + this.state.available[this.state.selectIdx].FileName + " from user " + this.state.available[this.state.selectIdx].SharerUsername,
+        });
+      }
     }).catch((error) => {
       console.log(error);
     });
+  }
+
+  nextFile() {
+    if (this.state.available.length > this.state.selectIdx + 1) {
+      let idx = this.state.selectIdx + 1;
+      this.setState({
+        feedback : "Selected for action file " + this.state.available[idx].FileName + " from user " + this.state.available[idx].SharerUsername,
+        selectIdx : idx,
+      });
+    }
+  }
+
+  prevFile() {
+    if (this.state.selectIdx > 0) {
+      let idx = this.state.selectIdx - 1;
+      this.setState({
+        feedback : "Selected for action file " + this.state.available[idx].FileName + " from user " + this.state.available[idx].SharerUsername,
+        selectIdx : idx,
+      });
+    }
   }
 
   onFormSubmit(e, field){
     e.preventDefault();
 
     if (field == 'u') {
-      // UPLOAD demo
-
+      // UPLOAD
       function uploadFileAsync(file, file_name, pubkey, privkey, callback) {
         let reader = new FileReader();
 
         reader.addEventListener("load", function () {
-          
-          // On very large file, encryption process can freeze up 3D canvas
-          // TODO maybe switch to web worker?
           const random_key = nacl.randomBytes(nacl.secretbox.keyLength);
           const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
           const encrypted_file = nacl.secretbox(new Uint8Array(reader.result), nonce, random_key);
@@ -178,6 +205,9 @@ class FileUp extends React.Component {
 
           axios.post(server + "/api/file/upload/", formData, config)
           .then((response) => {
+            this.setState({
+              feedback : "File uploaded successfully",
+            });
             callback(null, response);
           }).catch((error) => {
             console.log(error);
@@ -191,22 +221,24 @@ class FileUp extends React.Component {
       uploadFileAsync(this.state.file, this.state.file_name, this.props.getUserPubKey(), this.props.getUserPrivKey(), (err, res) => {
         if (err) console.log("ERROR CAUGHT");
         if (res) {
-          this.setState({ feedback : "Remember this ID to retrieve later :" + res.data.fileId });
+          this.setState({ feedback : "Uploaded to server successfully"});
         }
       });
 
     } else if (field == 'd') {
-      // DOWNLOAD demo
+      if (!this.state.available[this.state.selectIdx]) return;
+
+      // DOWNLOAD
       let encrypted_file_blob = null;
 
-      axios.get(server + "/api/file/" + this.state.fileId + "/", {
+      axios.get(server + "/api/file/" + this.state.available[this.state.selectIdx].FileId + "/", {
         responseType: 'arraybuffer',
       })
       .then((response) => {
 
         encrypted_file_blob = new Uint8Array(response.data);
 
-        return axios.get(server + "/api/file/" + this.state.fileId + "/header/");
+        return axios.get(server + "/api/file/" + this.state.available[this.state.selectIdx].FileId + "/header/");
       }).then((response) => {
 
 
@@ -224,7 +256,7 @@ class FileUp extends React.Component {
         const url = window.URL.createObjectURL(new Blob([decryptedFile]));
         const link = document.createElement('a');
         link.href = url;
-        link.setAttribute('download', 'file');
+        link.setAttribute('download', this.state.available[this.state.selectIdx].FileName);
         document.body.appendChild(link);
         link.click();
 
@@ -233,7 +265,9 @@ class FileUp extends React.Component {
         console.log(error);
       });
     } else {
-      // SHARE demo
+      // SHARE
+
+      if (!this.state.available[this.state.selectIdx]) return;
 
       let target_user_pubkey;
 
@@ -241,7 +275,7 @@ class FileUp extends React.Component {
       .then((response) => {
         target_user_pubkey = util.decodeBase64(response.data.pubkey);
 
-        return axios.get(server + "/api/file/" + this.state.fileId + "/header/");
+        return axios.get(server + "/api/file/" + this.state.available[this.state.selectIdx].FileId + "/header/");
       }).then((response) => {
 
         const encrypted_encryption_key = util.decodeBase64(response.data.EncryptedEncryptionKey);
@@ -258,9 +292,12 @@ class FileUp extends React.Component {
           encrypted_encryption_key: util.encodeBase64(target_encrypted_encryption_key),
           encrypted_encryption_key_nonce: util.encodeBase64(target_encrypted_encryption_key_nonce),
           target_username: this.state.username,
-          fileId: this.state.fileId,
+          fileId: this.state.available[this.state.selectIdx].FileId.toString(),
         });
       }).then((response) => {
+        this.setState({
+          feedback : "File uploaded successfully",
+        });
       }).catch((error) => {
         console.log(error);
       });
@@ -285,20 +322,18 @@ class FileUp extends React.Component {
         <form onSubmit={(e) => this.onFormSubmit(e, 'u')}>
             <h1>File Upload</h1>
             <input type="file" name="myFile" onChange={(e) => this.onChange(e, 'f')} />
-            <input type="text" name="fileName" onChange={(e) => this.onChange(e, 'n')} />
+            <input type="text" name="fileName" placeholder="Stored file name" onChange={(e) => this.onChange(e, 'n')} />
             <button type="submit">Upload</button>
         </form>
-        <form onSubmit={(e) => this.onFormSubmit(e, 'd')}>
-            <h1>File Download</h1>
-            <input type="text" name="fileId" onChange={(e) => this.onChange(e, 'i')} />
-            <button type="submit">Download</button>
-        </form>
+        <button onClick={(e) => this.onFormSubmit(e, 'd')}>Download</button>
         <form onSubmit={(e) => this.onFormSubmit(e, 's')}>
             <h1>File Share</h1>
-            <input type="text" name="username" onChange={(e) => this.onChange(e, 'u')} />
+            <input type="text" name="username" placeholder="target username" onChange={(e) => this.onChange(e, 'u')} />
             <button type="submit">Share</button>
         </form>
-        <button onClick={() => this.getAvailableFiles()}>Available Files</button>
+        <button onClick={() => this.getAvailableFiles()}>Check Files</button>
+        <button onClick={() => this.prevFile()}>Prev File</button>
+        <button onClick={() => this.nextFile()}>Next File</button>
         <div class="file-feedback">{this.state.feedback}</div>
       </div>
     )

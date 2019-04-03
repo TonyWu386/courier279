@@ -55,6 +55,17 @@ ol, ul {
   background-color: #625670;
 }
 
+.box-manage button {
+  margin: 2px;
+  padding: 5px;
+  border-radius: 8px;
+  border: 2px #47474d solid;
+}
+
+.box-manage input {
+  border-radius: 5px;
+}
+
 .instructext {
   font: 24px "Century Gothic", Futura, sans-serif;
   margin: 15px;

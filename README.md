@@ -4,6 +4,8 @@
 
 https://www.c279.ml
 
+[View Demo Video](https://drive.google.com/open?id=1d6muBwppWbUFVkLFFtEspeMw_ltLkxgd)
+
 ### Team:
 - Alexander Tam
 - Tony Wu

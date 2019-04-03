@@ -61,7 +61,7 @@ export default class LoginPortal extends React.Component {
     }
 
     this.setupNewUserCryptData((new_user_data) => {
-      this.ServerSignup(new_user_data, this.state.username);
+      this.ServerSignup(new_user_data, this.state.username, this.SigninUser.bind(this));
     });
   }
 
@@ -109,7 +109,7 @@ export default class LoginPortal extends React.Component {
   }
 
 
-  ServerSignup(new_user_data, username) {
+  ServerSignup(new_user_data, username, callback) {
     axios.post(server + "/api/signup/", {
       username: username,
       password: new_user_data.server_auth_key,
@@ -119,10 +119,7 @@ export default class LoginPortal extends React.Component {
       client_sym_kdf_salt: new_user_data.client_sym_kdf_salt,
     }).then((response) => {
       this.props.signupResponse(response.data + ", Good for you!");
-      // this.state.username should be fine, perhaps we should use response?
-      this.props.loginResponse(true, this.state.username);
-
-      this.clearFields();
+      callback();
     }).catch((err) => {
       if (err.response.status == 409) this.props.loginError("Sorry, but " + err.response.data);
       else this.props.loginError("MySQL server had an accident: " + err.response.data);

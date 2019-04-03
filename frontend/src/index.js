@@ -205,9 +205,6 @@ class FileUp extends React.Component {
 
           axios.post(server + "/api/file/upload/", formData, config)
           .then((response) => {
-            this.setState({
-              feedback : "File uploaded successfully",
-            });
             callback(null, response);
           }).catch((error) => {
             console.log(error);
@@ -295,9 +292,6 @@ class FileUp extends React.Component {
           fileId: this.state.available[this.state.selectIdx].FileId.toString(),
         });
       }).then((response) => {
-        this.setState({
-          feedback : "File uploaded successfully",
-        });
       }).catch((error) => {
         console.log(error);
       });

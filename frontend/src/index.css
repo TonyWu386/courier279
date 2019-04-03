@@ -62,6 +62,12 @@ ol, ul {
   align-self: center;
 }
 
+.file-feedback {
+  font: 20px "Century Gothic", Futura, sans-serif;
+  margin: 5px;
+  align-self: center;
+}
+
 .login-e {
   display:flex;
   margin: 10px;

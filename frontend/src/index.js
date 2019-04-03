@@ -127,6 +127,7 @@ class FileUp extends React.Component {
         file_name: null,
         fileId: null,
         username: null,
+        feedback: "Note ID when uploading. You need it to download later."
     };
     this.onFormSubmit = this.onFormSubmit.bind(this);
     this.onChange = this.onChange.bind(this);
@@ -177,7 +178,7 @@ class FileUp extends React.Component {
 
           axios.post(server + "/api/file/upload/", formData, config)
           .then((response) => {
-            callback(null, "The file is successfully uploaded");
+            callback(null, response);
           }).catch((error) => {
             console.log(error);
             callback(error, null);
@@ -189,6 +190,9 @@ class FileUp extends React.Component {
 
       uploadFileAsync(this.state.file, this.state.file_name, this.props.getUserPubKey(), this.props.getUserPrivKey(), (err, res) => {
         if (err) console.log("ERROR CAUGHT");
+        if (res) {
+          this.setState({ feedback : "Remember this ID to retrieve later :" + res.data.fileId });
+        }
       });
 
     } else if (field == 'd') {
@@ -225,6 +229,7 @@ class FileUp extends React.Component {
         link.click();
 
       }).catch((error) => {
+        this.setState({ feedback : "Could not fetch a file with that ID" });
         console.log(error);
       });
     } else {
@@ -294,6 +299,7 @@ class FileUp extends React.Component {
             <button type="submit">Share</button>
         </form>
         <button onClick={() => this.getAvailableFiles()}>Available Files</button>
+        <div class="file-feedback">{this.state.feedback}</div>
       </div>
     )
   }

@@ -20,7 +20,7 @@ Sign-in:
       - ClientSymKdfSalt: (string) Symmetric key fpr the client. Encrypted.
       - PubKey: (string) Public key for the user.
       - EncryptedPrivKey: (string) User's private key. Encrypted.
-      - EncryptedPrivKeyNonce: (string) Nonce for User's private key. Encrypted.
+      - EncryptedPrivKeyNonce: (string) Nonce for User's private key.
 - response: 400
     - content-type: `text/plain`
     - body: "bad input"

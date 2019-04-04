@@ -6,6 +6,8 @@ Please note that the nature of the application's encryption scheme means that mo
 
 ### Create
 
+Sign-in:
+
 - Description: Logs an existing user into the web application by setting cookies and returning required information required by the cryptographic scheme.
 - request: `POST /api/signin/`
     - content-type: `application/json`
@@ -37,6 +39,8 @@ $ curl -X POST
 ```
 
 - Additional Notes: Most of returned information is encrypted and unusable without further operations. Returns 400 codes if the username is not alphanumeric. 500 codes are not expected during normal operation and indicate server issues.
+
+Sign-up:
 
 - Description: Create a new user for the application and logs in
 - request: `POST /api/signup/`
@@ -74,6 +78,8 @@ $ curl -X POST
 - Additional Notes: Most of returned information is encrypted and unusable without further operations. Returns 400 codes if the username is not alphanumeric, or if there is missing information required for cryptography. 500 codes are not expected during normal operation and indicate server issues.
 
 ### Read
+
+Signout:
 
 - Description: Signout from the app
 - request: `GET /api/signout/`

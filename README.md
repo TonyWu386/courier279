@@ -6,6 +6,8 @@ https://www.c279.ml
 
 [View Demo Video](https://drive.google.com/open?id=1d6muBwppWbUFVkLFFtEspeMw_ltLkxgd)
 
+[API Documentation](https://github.com/UTSCC09/project-courier279/blob/master/doc/ApiDoc.md)
+
 ### Team:
 - Alexander Tam
 - Tony Wu

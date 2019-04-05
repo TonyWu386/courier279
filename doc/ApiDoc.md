@@ -510,8 +510,8 @@ Make settings:
 ``` 
 $ curl -X POST 
        -H "Content-Type: `application/json`" 
-       -d '{"encrypted_body":"encrypted","nonce":"salty"}'
-       https://www.c279.ml/api/messages/group/1337/
+       -d '{"colorA":"0xffffff","colorB":"0xffffff","colorC":"0xffffff","colorD":"0xffffff","turn_speed":3,"move_speed":3,"font_size":30}'
+       https://www.c279.ml/api/settings/
 ```
 
 - Additional Notes: Returns 400 codes if some field is not valid or is missing key information. 500 codes are not expected during normal operation and indicate server issues.
@@ -537,7 +537,7 @@ Get all users:
 ``` 
 $ curl -X GET 
        -H "Content-Type: `application/json`" 
-       https://www.c279.ml/api/crypto/pubkey/?username=itsasecret
+       https://www.c279.ml/api/users/
 ```
 
 - Additional Notes: Returns 400 codes if some field is not alphanumeric or is otherwise unacceptable. 500 codes are not expected during normal operation and indicate server issues.

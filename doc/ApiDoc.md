@@ -475,7 +475,292 @@ $ curl -X GET
 
 ## Session APIs
 
+Get Group Session:
+
+- Description: As a logged in user, get info about session :id (user must be part of it already)
+- request: `GET /api/group/session/:id/`
+    - content-type `application/json`
+- response: 200
+    - content-type `application/json`
+    - body: object with following fields
+      - SessionId: (string) ID of session
+      - SessionType: (string) type of session.
+      - SessionStartDate: (Date) datetime the session began on.
+      - OwnerUsername: (string) username of user who owns this session.
+      - EncryptedSessionKey: (string) base64 encoded encrypted symmetric key for this session
+      - Nonce: (string) base64 encoded nonce for the encrypted session key.
+- response: 400
+    - content-type: `text/plain`
+    - body: "Did not get required data"
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 403
+    - content-type: `text/plain`
+    - body: "Session doesn't exist or user does not have access"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl -X GET --header 'Content-Type: application/json' -b cookiefileA https://www.c279.ml/api/group/session/1/
+```
+
+Get Usernames In Group Session:
+
+- Description: As a logged in user, get the usernames in group session :id (user must be part of it already)
+- request: `GET /api/group/session/:id/usernames/`
+    - content-type `application/json`
+- response: 200
+    - content-type `application/json`
+    - body: list of objects with following fields
+      - UserId: (string) ID of an user in that group session
+      - Username: (string) username of the user
+- response: 400
+    - content-type: `text/plain`
+    - body: "Did not get required data"
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 403
+    - content-type: `text/plain`
+    - body: "User not a part of this session"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl -X GET --header 'Content-Type: application/json' -b cookiefileA https://www.c279.ml/api/group/session/1/usernames/
+```
+
+
+Get All Group Sessions Of User:
+
+- Description: As a logged in user, get info and crypto data of all group sessions the user is in
+- request: `GET /api/group/session/`
+    - content-type `application/json`
+- response: 200
+    - content-type `application/json`
+    - body: list of objects with following fields
+      - SessionId: (string) ID of session
+      - SessionName: (string) descriptive name of session
+      - SessionType: (string) type of session.
+      - SessionStartDate: (Date) datetime the session began on.
+      - OwnerUsername: (string) username of user who owns this session.
+      - PubKey: (string) base64 encoded public key of whoever created this group session
+      - EncryptedSessionKey: (string) base64 encoded encrypted symmetric key for this session
+      - Nonce: (string) base64 encoded nonce for the encrypted session key.
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl -X GET --header 'Content-Type: application/json' -b cookiefileA https://www.c279.ml/api/group/session/
+```
+
+Add User To Existing Session:
+
+- Description: As a logged in user who is the owner of a group session :id, add another user to it
+- request: `POST /api/group/session/:id/adduser/`
+    - content-type: `application/json`
+    - body: body: object
+        - encrypted_session_key: (string) base64 encoded encrypted session key intended for the new user
+        - nonce: (string) base64 encoded nonce for the encrypted_session_key
+        - username_to_add: (string) username to add to group session
+- response: 200
+    - content-type: `text/plain`
+    - body: "Added user x to session with id y"
+- response: 400
+    - content-type: `text/plain`
+    - body: "bad input"
+- response: 400
+    - content-type: `text/plain`
+    - body: "Did not get required data"
+- response: 400
+    - content-type: `text/plain`
+    - body: "Group session not found"
+- response: 400
+    - content-type: `text/plain`
+    - body: "Username to add does not exist"
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 403
+    - content-type: `text/plain`
+    - body: "Not the owner of this group session"
+- response: 403
+    - content-type: `text/plain`
+    - body: "Target user is already in session"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl --header 'Content-Type: application/json' -X POST --data '{"encrypted_session_key":"YQ==", "nonce":"bg==", "username_to_add":"testUserB"}' -b cookiefileA https://www.c279.ml/api/group/session/1/adduser/
+```
+
+
+Create A New Session:
+
+- Description: As a logged in user, create a new group session
+- request: `POST /api/group/session/`
+    - content-type: `application/json`
+    - body: body: object
+        - encrypted_session_key: (string) base64 encoded encrypted session key intended for the user themselves
+        - nonce: (string) base64 encoded nonce for the encrypted_session_key
+        - session_name: (string) optional descriptive session name
+- response: 200
+    - content-type: `application/json`
+    - body: object with following field
+      - sessionId: (string) ID of the new session
+- response: 400
+    - content-type: `text/plain`
+    - body: "bad input"
+- response: 400
+    - content-type: `text/plain`
+    - body: "Did not get required data"
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl --header 'Content-Type: application/json' -X POST --data '{"encrypted_session_key":"bg==", "nonce":"bg=="}' -b cookiefileB https://www.c279.ml/api/group/session/
+```
+
+
 ## File APIs
+
+Upload New File:
+
+- Description: As a logged in user, upload a new encrypted file
+- request: `POST /api/file/upload/`
+    - content-type: `multipart/form-data`
+    - body: multipart with encrypted file and JS object
+        - file_name: (string) name of file
+        - nonce: (string) base64 encrypted nonce for file symmetric encryption
+        - encrypted_encryption_key: (string) base64 encoded encrypted encryption key of file
+        - encrypted_encryption_key_nonce: (string) base64 encoded nonce for encrypted_encryption_key
+- response: 200
+    - content-type: `text/plain`
+    - body: object with the following field
+        - fileId: (string) the id of the new file
+- response: 400
+    - content-type: `text/plain`
+    - body: "bad input"
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+Share Existing File:
+
+- Description: As a logged in user, share an existing uploaded file with another user
+- request: `POST /api/file/share/`
+    - content-type: `application/json`
+    - body: object
+        - fileId: (string) fileId of file to share
+        - target_username: (string) username of user to share with
+        - encrypted_encryption_key: (string) base64 encoded encrypted encryption key of file
+        - encrypted_encryption_key_nonce: (string) base64 encoded nonce for encrypted_encryption_key
+- response: 200
+    - content-type: `text/plain`
+    - body: "Successfully shared file with x"
+- response: 400
+    - content-type: `text/plain`
+    - body: "bad input"
+- response: 400
+    - content-type: `text/plain`
+    - body: "Target username doesn't exist"
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl --header 'Content-Type: application/json' -X POST --data '{"fileId":"1", "target_username":"foo", "encrypted_encryption_key":"bg==", "encrypted_encryption_key_nonce":"bg=="}' -b cookiefileB https://www.c279.ml/api/file/share/
+```
+
+Get User's Files:
+
+- Description: As a logged in user, get list of file accessible to logged-in user
+- request: `GET /api/file/share/`
+    - content-type `application/json`
+- response: 200
+    - content-type `application/json`
+    - body: list of objects with following fields
+      - FileId: (string) ID of file
+      - FileName: (string) name of file
+      - SharerUsername: (string) username of the user who shared the file
+      - Date: (Date) date file was shared with/uploaded by user
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl --header 'Content-Type: application/json' -X GET -b cookiefileB https://www.c279.ml/api/file/share/
+```
+
+Get Encrypted File:
+
+- Description: As a logged in user, get the encrypted file :id
+- request: `GET /api/file/:id/`
+    - content-type `application/json`
+- reponse: 200
+    - content-type: `application/octet-stream`
+    - body: encrypted file blob
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 400
+    - content-type: `text/plain`
+    - body: "File does not exist"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl --header 'Content-Type: application/json' -X GET -b cookiefileB https://www.c279.ml/api/file/1/
+```
+
+Get File Crypto Data:
+
+- Description: As a logged in user, get the crypto data associated with file :id
+- request: `GET /api/file/:id/header/`
+    - content-type `application/json`
+- response: 200
+    - content-type `application/json`
+    - body: object with following fields
+      - FileName: (string) name of file
+      - Nonce: (string) base64 encoded nonce for file's symmetric encryption
+      - EncryptedEncryptionKeyNonce: (string) base64 encoded nonce of EncryptedEncryptionKey 
+      - EncryptedEncryptionKey: (string) base64 encoded encrypted symmetric key
+      - PubKey: (string) base64 encoded public key associated with EncryptedEncryptionKey
+- response: 401
+    - content-type: `text/plain`
+    - body: "Not signed in - access denied"
+- response: 403
+    - content-type: `text/plain`
+    - body: "User does not have permissions on this file"
+- response: 500
+    - content-type: `text/plain`
+    - body: "Internal MySQL Error"
+
+```
+$ curl --header 'Content-Type: application/json' -X GET -b cookiefileB https://www.c279.ml/api/file/1/header/
+```
 
 ## User APIs
 
